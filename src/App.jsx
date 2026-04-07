@@ -97,7 +97,7 @@ function Panel({ title, children }) {
 }
 
 const CARD_RULES = [
-  { name: "Recto", effect: "Toute carte jouee face retournee fait seulement +1 case." },
+  { name: "Recto", effect: "Toute carte jouee face retournee fait seulement +1 case et perd sa valeur tant qu'elle reste retournee." },
   { name: "Sorciere", effect: "Avance de 3 si votre pion est dans la zone de la colonne jouee." },
   { name: "Vampire", effect: "Copie la valeur de la carte du dessus dans la colonne adverse correspondante." },
   { name: "Squelette", effect: "Avance de 1 puis rejoue s'il est pose sur une lune ou sur une carte lune." },
