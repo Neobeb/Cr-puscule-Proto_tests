@@ -104,6 +104,7 @@ const CARD_RULES = [
   { name: "Loup", effect: "Avance de 2 par lune presente dans la colonne adverse correspondante." },
   { name: "Zombie", effect: "Avance selon votre nombre total de zombies. A 5 ou plus, gagne une etoile." },
   { name: "Reflet", effect: "Copie la valeur de la carte au meme niveau a gauche ou a droite. Si les deux existent, choisissez." },
+  { name: "Masque", effect: "Avance de 1 par colonne de votre cote contenant au moins une carte retournee." },
   { name: "Slime", effect: "Ne fait pas avancer, mais peut etre joue dans n'importe quelle colonne." },
 ];
 
