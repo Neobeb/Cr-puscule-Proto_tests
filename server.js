@@ -175,12 +175,20 @@ function drawCards(deck, count) {
   };
 }
 
+function getCardEffectiveValue(card) {
+  if (!card) {
+    return 0;
+  }
+
+  return card.faceUp === false ? 0 : card.value;
+}
+
 function getTopValue(column) {
   if (!column.length) {
     return 0;
   }
 
-  return Math.max(...column.map((card) => card.value));
+  return Math.max(...column.map((card) => getCardEffectiveValue(card)));
 }
 
 function canPlaceCardInColumn(card, column) {
@@ -331,7 +339,7 @@ function createRefletOptions(game, playerIndex, columnIndex) {
       options.push({
         direction: "left",
         columnIndex: columnIndex - 1,
-        cardValue: leftCard.value,
+        cardValue: getCardEffectiveValue(leftCard),
         cardType: leftCard.faceUp !== false ? leftCard.type : null,
         cardFaceUp: leftCard.faceUp !== false,
       });
@@ -344,7 +352,7 @@ function createRefletOptions(game, playerIndex, columnIndex) {
       options.push({
         direction: "right",
         columnIndex: columnIndex + 1,
-        cardValue: rightCard.value,
+        cardValue: getCardEffectiveValue(rightCard),
         cardType: rightCard.faceUp !== false ? rightCard.type : null,
         cardFaceUp: rightCard.faceUp !== false,
       });
@@ -370,7 +378,7 @@ function resolveRefletChoice(game, direction) {
   movePlayer(game, pendingChoice.playerIndex, option.cardValue);
   recordCardMovement(game, "reflet", option.cardValue);
   game.log.unshift(
-    `${game.players[pendingChoice.playerIndex].name} choisit ${direction === "left" ? "gauche" : "droite"} pour son reflet : +${option.cardValue} grace a ${option.cardFaceUp ? `${getTypeLabel(option.cardType)} ${option.cardValue}` : `une carte retournee ${option.cardValue}`}.`
+    `${game.players[pendingChoice.playerIndex].name} choisit ${direction === "left" ? "gauche" : "droite"} pour son reflet : +${option.cardValue} grace a ${option.cardFaceUp ? `${getTypeLabel(option.cardType)} ${option.cardValue}` : "une carte retournee sans valeur"}.`
   );
   game.pendingChoice = null;
 }
@@ -386,7 +394,7 @@ function createFlipOptions(game) {
           columnIndex,
           rowIndex,
           cardType: card.faceUp !== false ? card.type : null,
-          cardValue: card.value,
+          cardValue: getCardEffectiveValue(card),
           faceUp: card.faceUp !== false,
         });
       });
@@ -505,7 +513,7 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
   if (card.faceUp === false) {
     movePlayer(game, playerIndex, 1);
     game.log.unshift(
-      `${game.players[playerIndex].name} joue une carte retournee ${card.value} : recto -> +1`
+      `${game.players[playerIndex].name} joue une carte retournee sans valeur : recto -> +1`
     );
     return;
   }
@@ -570,7 +578,7 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       const oppositePlayerIndex = getOppositePlayerIndex(playerIndex);
       const oppositeColumn = game.players[oppositePlayerIndex].columns[columnIndex];
       const oppositeTopCard = getTopCard(oppositeColumn);
-      const copiedValue = oppositeTopCard ? oppositeTopCard.value : 0;
+      const copiedValue = getCardEffectiveValue(oppositeTopCard);
 
       movePlayer(game, playerIndex, copiedValue);
       recordCardMovement(game, "vampire", copiedValue);
@@ -620,7 +628,7 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
         movePlayer(game, playerIndex, options[0].cardValue);
         recordCardMovement(game, "reflet", options[0].cardValue);
         game.log.unshift(
-          `${game.players[playerIndex].name} active Reflet ${card.value} : +${options[0].cardValue} grace a ${options[0].cardFaceUp ? `${getTypeLabel(options[0].cardType)} ${options[0].cardValue}` : `une carte retournee ${options[0].cardValue}`}`
+          `${game.players[playerIndex].name} active Reflet ${card.value} : +${options[0].cardValue} grace a ${options[0].cardFaceUp ? `${getTypeLabel(options[0].cardType)} ${options[0].cardValue}` : "une carte retournee sans valeur"}`
         );
         return;
       }
@@ -803,7 +811,7 @@ function sanitizeGame(game, playerId) {
         card.faceUp === false
           ? {
               id: card.id,
-              value: card.value,
+              value: 0,
               faceUp: false,
             }
           : card
@@ -1072,7 +1080,6 @@ function isBotTurn(game) {
   return (
     game.phase === "playing" &&
     !game.winner &&
-    !game.pendingChoice &&
     Boolean(game.players[game.currentPlayer]?.isBot)
   );
 }
