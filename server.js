@@ -188,7 +188,7 @@ function getTopValue(column) {
     return 0;
   }
 
-  return Math.max(...column.map((card) => getCardEffectiveValue(card)));
+  return getCardEffectiveValue(column[column.length - 1]);
 }
 
 function canPlaceCardInColumn(card, column) {
