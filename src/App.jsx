@@ -97,6 +97,7 @@ function Panel({ title, children }) {
 }
 
 const CARD_RULES = [
+  { name: "Recto", effect: "Toute carte jouee face retournee fait seulement +1 case." },
   { name: "Sorciere", effect: "Avance de 3 si votre pion est dans la zone de la colonne jouee." },
   { name: "Vampire", effect: "Copie la valeur de la carte du dessus dans la colonne adverse correspondante." },
   { name: "Squelette", effect: "Avance de 1 puis rejoue s'il est pose sur une lune ou sur une carte lune." },
@@ -107,8 +108,9 @@ const CARD_RULES = [
 ];
 
 const BOARD_RULES = [
-  { name: "Case 5", effect: "Vous pouvez defausser la carte du dessus d'une colonne, chez vous ou chez l'adversaire." },
-  { name: "Case 8", effect: "Vous comptez comme ayant un zombie supplementaire tant que votre pion y est." },
+  { name: "Pioche cachee", effect: "A votre tour, vous pouvez jouer la premiere carte du deck face retournee. Son effet joue est toujours +1." },
+  { name: "Case 5", effect: "Vous pouvez retourner une carte deja sur le plateau, chez vous ou chez l'adversaire." },
+  { name: "Case 8", effect: "Vous pouvez retourner une carte deja sur le plateau, chez vous ou chez l'adversaire." },
   { name: "Chefs", effect: "Apres une etoile, les deux pions reviennent a 0 puis avancent du nombre de chefs poses de chaque cote." },
 ];
 
@@ -124,6 +126,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
+  const [hiddenDrawMode, setHiddenDrawMode] = useState(false);
   const [connectionState, setConnectionState] = useState(
     initialSession.gameId && initialSession.playerId ? "connecting" : "idle"
   );
@@ -286,6 +289,12 @@ export default function App() {
   const selectedCardLabel = selectedCard
     ? CREATURES[selectedCard.type]?.label || selectedCard.type
     : "";
+
+  useEffect(() => {
+    if (!viewerCanAct || pendingChoice || activePlayerBlocked || selectedCard) {
+      setHiddenDrawMode(false);
+    }
+  }, [viewerCanAct, pendingChoice, activePlayerBlocked, selectedCard]);
 
   return (
     <div
@@ -463,7 +472,7 @@ export default function App() {
                 <div style={summaryCardStyle}>
                   <strong>Deck restant</strong>
                   <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4 }}>
-                    {game.deck.length}
+                    {game.deckCount}
                   </div>
                 </div>
                 <div style={summaryCardStyle}>
@@ -504,12 +513,14 @@ export default function App() {
                   {pendingChoice
                     ? pendingChoice.type === "reflet"
                       ? "Choisissez si le Reflet copie la carte de gauche ou de droite."
-                      : "Case 5 : choisissez une carte du dessus a defausser, ou passez."
+                      : `Case ${pendingChoice.sourceCase} : choisissez une carte a retourner, ou passez.`
                     : activePlayerBlocked
                     ? "Aucun coup possible : choisissez une colonne a defausser."
+                    : hiddenDrawMode
+                    ? "Pioche cachee selectionnee : choisissez une colonne pour jouer le recto +1."
                     : selectedCard
                     ? `Carte selectionnee : ${selectedCardLabel} ${selectedCard.value}. Choisissez une colonne.`
-                    : "Selectionnez une carte dans la rangee commune."}
+                    : "Selectionnez une carte dans la rangee commune, ou jouez la premiere carte du deck face retournee."}
                 </div>
               ) : null}
 
@@ -538,39 +549,40 @@ export default function App() {
                 </div>
               ) : null}
 
-              {pendingChoice?.type === "board_discard" ? (
+              {pendingChoice?.type === "board_flip" ? (
                 <div style={choicePanelStyle}>
                   <div style={{ fontWeight: 800, marginBottom: 10 }}>
-                    Case 5 : defausser une carte du dessus
+                    Case {pendingChoice.sourceCase} : retourner une carte
                   </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
                     {pendingChoice.options.map((option) => (
                       <button
-                        key={`${option.targetPlayerIndex}-${option.columnIndex}`}
+                        key={`${option.targetPlayerIndex}-${option.columnIndex}-${option.rowIndex}`}
                         onClick={() =>
                           sendAction({
-                            type: "resolve_board_discard",
+                            type: "resolve_board_flip",
                             targetPlayerIndex: option.targetPlayerIndex,
                             columnIndex: option.columnIndex,
+                            rowIndex: option.rowIndex,
                           })
                         }
                         style={choiceButtonStyle}
                       >
-                        {option.targetPlayerName} col {option.columnIndex + 1} :{" "}
-                        {option.cardLabel} {option.cardValue}
+                        {option.targetPlayerName} col {option.columnIndex + 1} rang{" "}
+                        {option.rowIndex + 1} : {option.cardLabel} {option.cardValue}
                       </button>
                     ))}
                   </div>
                   <button
                     onClick={() =>
                       sendAction({
-                        type: "resolve_board_discard",
+                        type: "resolve_board_flip",
                         skip: true,
                       })
                     }
                     style={secondaryChoiceButtonStyle}
                   >
-                    Ne rien defausser
+                    Ne rien retourner
                   </button>
                 </div>
               ) : null}
@@ -585,15 +597,39 @@ export default function App() {
             </Panel>
 
             <Panel title="Rangee commune">
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                <button
+                  onClick={() => setHiddenDrawMode((current) => !current)}
+                  disabled={
+                    !viewerCanAct ||
+                    activePlayerBlocked ||
+                    game.phase !== "playing" ||
+                    Boolean(pendingChoice) ||
+                    game.deckCount === 0
+                  }
+                  style={hiddenDrawMode ? primaryButtonStyle : secondaryButtonStyle}
+                >
+                  {hiddenDrawMode ? "Pioche cachee selectionnee" : "Jouer la premiere carte du deck face retournee"}
+                </button>
+                {hiddenDrawMode ? (
+                  <button onClick={() => setHiddenDrawMode(false)} style={smallButtonStyle}>
+                    Annuler
+                  </button>
+                ) : null}
+              </div>
               <CommonRow
                 row={game.row}
                 selectedCardIndex={game.selectedCardIndex}
-                onSelectCard={(cardIndex) => sendAction({ type: "select_card", cardIndex })}
+                onSelectCard={(cardIndex) => {
+                  setHiddenDrawMode(false);
+                  sendAction({ type: "select_card", cardIndex });
+                }}
                 disabled={
                   !viewerCanAct ||
                   activePlayerBlocked ||
                   game.phase !== "playing" ||
-                  Boolean(pendingChoice)
+                  Boolean(pendingChoice) ||
+                  hiddenDrawMode
                 }
               />
             </Panel>
@@ -606,10 +642,15 @@ export default function App() {
                 winner={game.winner}
                 canInteract={viewerCanAct && game.phase === "playing" && !pendingChoice}
                 onColumnClick={(columnIndex) =>
-                  sendAction({
-                    type: activePlayerBlocked ? "discard_column" : "play_column",
-                    columnIndex,
-                  })
+                  hiddenDrawMode
+                    ? sendAction({
+                        type: "play_hidden_card",
+                        columnIndex,
+                      }).finally(() => setHiddenDrawMode(false))
+                    : sendAction({
+                        type: activePlayerBlocked ? "discard_column" : "play_column",
+                        columnIndex,
+                      })
                 }
               />
             </Panel>
