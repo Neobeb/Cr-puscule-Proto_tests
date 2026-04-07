@@ -13,6 +13,7 @@ const TYPE_LABELS = {
   loup: "Loup",
   zombie: "Zombie",
   reflet: "Reflet",
+  masque: "Masque",
   slime: "Slime",
 };
 
@@ -58,6 +59,13 @@ const cards = [
     value,
     moon: value === 4,
     chief: value === 5 || value === 6,
+  })),
+  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
+    id: `masque-${value}`,
+    type: "masque",
+    value,
+    moon: false,
+    chief: false,
   })),
   ...[3, 3, 3, 3, 4, 4, 4].map((value, index) => ({
     id: `slime-${value}-${index}`,
@@ -248,6 +256,14 @@ function countChiefsOnPlayerBoard(game, playerIndex) {
   return game.players[playerIndex].columns.reduce(
     (total, column) =>
       total + column.filter((card) => card.faceUp !== false && card.chief).length,
+    0
+  );
+}
+
+function countColumnsWithFaceDownCards(game, playerIndex) {
+  return game.players[playerIndex].columns.reduce(
+    (total, column) =>
+      total + (column.some((card) => card.faceUp === false) ? 1 : 0),
     0
   );
 }
@@ -616,6 +632,16 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       };
       game.log.unshift(
         `${game.players[playerIndex].name} doit choisir gauche ou droite pour son Reflet ${card.value}.`
+      );
+      return;
+    }
+    case "masque": {
+      recordCardActivation(game, "masque");
+      const move = countColumnsWithFaceDownCards(game, playerIndex);
+      movePlayer(game, playerIndex, move);
+      recordCardMovement(game, "masque", move);
+      game.log.unshift(
+        `${game.players[playerIndex].name} active Masque ${card.value} : ${move} colonne(s) avec au moins une carte retournee -> +${move}`
       );
       return;
     }
@@ -1096,7 +1122,8 @@ function finalizeTurnAfterResolvedPlay(
   game,
   playerIndex,
   wasLeftmostCard,
-  previousPosition
+  previousPosition,
+  shouldRefillRow = false
 ) {
   const player = game.players[playerIndex];
   const pendingPlay = game.pendingPlay || null;
@@ -1121,12 +1148,14 @@ function finalizeTurnAfterResolvedPlay(
     }
   }
 
-  if (wasLeftmostCard) {
+  if (wasLeftmostCard || shouldRefillRow) {
     const missingCards = 4 - game.row.length;
     const { drawn, remaining } = drawCards(game.deck, missingCards);
-    game.row.push(...drawn);
-    game.deck = remaining;
-    game.log.unshift(`Refill : ${drawn.length} carte(s) ajoutee(s) a la rangee.`);
+    if (drawn.length > 0) {
+      game.row.push(...drawn);
+      game.deck = remaining;
+      game.log.unshift(`Refill : ${drawn.length} carte(s) ajoutee(s) a la rangee.`);
+    }
   }
 
   game.selectedCardIndex = null;
@@ -1205,7 +1234,8 @@ function performAction(game, playerId, action) {
       game,
       playerIndex,
       pendingPlay?.wasLeftmostCard,
-      pendingPlay?.previousPosition
+      pendingPlay?.previousPosition,
+      pendingPlay?.shouldRefillRow
     );
     game.pendingPlay = null;
     return;
@@ -1227,7 +1257,8 @@ function performAction(game, playerId, action) {
       game,
       playerIndex,
       pendingPlay?.wasLeftmostCard,
-      pendingPlay?.previousPosition
+      pendingPlay?.previousPosition,
+      pendingPlay?.shouldRefillRow
     );
     game.pendingPlay = null;
     return;
@@ -1297,6 +1328,7 @@ function performAction(game, playerId, action) {
         wasLeftmostCard,
         boardFlipResolvedCase: null,
         previousPosition,
+        shouldRefillRow: false,
       };
       game.selectedCardIndex = null;
       game.updatedAt = Date.now();
@@ -1351,12 +1383,13 @@ function performAction(game, playerId, action) {
         wasLeftmostCard: false,
         boardFlipResolvedCase: null,
         previousPosition,
+        shouldRefillRow: true,
       };
       game.updatedAt = Date.now();
       return;
     }
 
-    finalizeTurnAfterResolvedPlay(game, playerIndex, false, previousPosition);
+    finalizeTurnAfterResolvedPlay(game, playerIndex, false, previousPosition, true);
     return;
   }
 
