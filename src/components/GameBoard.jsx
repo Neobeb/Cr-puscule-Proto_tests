@@ -5,7 +5,10 @@ function renderColumn(player, columnIndex) {
   const column = player.columns[columnIndex];
   const moonCount =
     (player.columnMoons?.[columnIndex] || 0) +
-    column.reduce((total, card) => total + (card.moon ? 1 : 0), 0);
+    column.reduce(
+      (total, card) => total + (card.faceUp !== false && card.moon ? 1 : 0),
+      0
+    );
 
   return (
     <div
@@ -183,8 +186,8 @@ export default function GameBoard({
 }) {
   const zones = [
     { start: 0, end: 2, label: "Zone 1", effectText: "" },
-    { start: 3, end: 5, label: "Zone 2", effectText: "Case 5 : defausse optionnelle" },
-    { start: 6, end: 8, label: "Zone 3", effectText: "Case 8 : zombie bonus" },
+    { start: 3, end: 5, label: "Zone 2", effectText: "Case 5 : retourner une carte" },
+    { start: 6, end: 8, label: "Zone 3", effectText: "Case 8 : retourner une carte" },
     { start: 9, end: 11, label: "Zone 4", effectText: "" },
   ];
 
