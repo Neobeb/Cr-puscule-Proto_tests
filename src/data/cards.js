@@ -1,0 +1,51 @@
+export const cards = [
+  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
+    id: `sorciere-${value}`,
+    type: "sorciere",
+    value,
+    moon: value === 1,
+    chief: value === 6,
+  })),
+  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
+    id: `vampire-${value}`,
+    type: "vampire",
+    value,
+    moon: value === 4,
+    chief: value === 0 || value === 1,
+  })),
+  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
+    id: `squelette-${value}`,
+    type: "squelette",
+    value,
+    moon: value === 6,
+    chief: value === 0,
+  })),
+  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
+    id: `loup-${value}`,
+    type: "loup",
+    value,
+    moon: value === 5,
+    chief: value === 1 || value === 2,
+  })),
+  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
+    id: `zombie-${value}`,
+    type: "zombie",
+    value,
+    moon: false,
+    chief: value === 4,
+  })),
+  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
+    id: `reflet-${value}`,
+    type: "reflet",
+    value,
+    moon: value === 4,
+    chief: value === 5 || value === 6,
+  })),
+  ...[3, 3, 3, 3, 4, 4, 4].map((value, index) => ({
+    id: `slime-${value}-${index}`,
+    type: "slime",
+    value,
+    moon: false,
+    chief: value === 4,
+  })),
+];
