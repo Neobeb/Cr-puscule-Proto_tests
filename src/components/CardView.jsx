@@ -11,6 +11,7 @@ export default function CardView({
     ? creature?.color || "white"
     : "linear-gradient(135deg, #1e293b 0%, #334155 100%)";
   const textColor = isFaceUp ? "#0f172a" : "white";
+  const displayedValue = isFaceUp ? card.value : 0;
 
   return (
     <div
@@ -52,7 +53,7 @@ export default function CardView({
       </div>
 
       <div style={{ fontSize: 24, fontWeight: "bold", marginTop: 4 }}>
-        {card.value}
+        {displayedValue}
       </div>
 
       {!isFaceUp ? (
