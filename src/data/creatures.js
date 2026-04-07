@@ -29,6 +29,11 @@ export const CREATURES = {
     color: "#fde68a",
     icon: "🪞",
   },
+  masque: {
+    label: "Masque",
+    color: "#c4b5fd",
+    icon: "🎭",
+  },
   slime: {
     label: "Slime",
     color: "#86efac",
