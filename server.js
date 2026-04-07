@@ -212,9 +212,7 @@ function canPlayDeckTopCard(game, playerIndex) {
     return false;
   }
 
-  return game.players[playerIndex].columns.some((column) =>
-    canPlaceCardInColumn(topDeckCard, column)
-  );
+  return game.players[playerIndex].columns.some((column) => getTopValue(column) <= 0);
 }
 
 function countMoonsInColumn(column, baseMoons = 0) {
@@ -1364,9 +1362,9 @@ function performAction(game, playerId, action) {
       throw new Error("Cible invalide.");
     }
 
-    if (!canPlaceCardInColumn(deckCard, targetColumn)) {
+    if (getTopValue(targetColumn) > 0) {
       throw new Error(
-        `Pose interdite : ${deckCard.value} doit etre >= a ${getTopValue(targetColumn)}.`
+        "Pose interdite : une carte retournee ne peut etre jouee que sur une colonne dont le dessus vaut 0."
       );
     }
 
