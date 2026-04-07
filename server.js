@@ -159,7 +159,10 @@ function createDeck() {
 
 function drawCards(deck, count) {
   return {
-    drawn: deck.slice(0, count),
+    drawn: deck.slice(0, count).map((card) => ({
+      ...card,
+      faceUp: true,
+    })),
     remaining: deck.slice(count),
   };
 }
@@ -186,10 +189,25 @@ function canPlayAnyCard(row, columns) {
   );
 }
 
+function canPlayDeckTopCard(game, playerIndex) {
+  const topDeckCard = game.deck[0];
+
+  if (!topDeckCard) {
+    return false;
+  }
+
+  return game.players[playerIndex].columns.some((column) =>
+    canPlaceCardInColumn(topDeckCard, column)
+  );
+}
+
 function countMoonsInColumn(column, baseMoons = 0) {
   return (
     baseMoons +
-    column.reduce((total, card) => total + (card.moon ? 1 : 0), 0)
+    column.reduce(
+      (total, card) => total + (card.faceUp !== false && card.moon ? 1 : 0),
+      0
+    )
   );
 }
 
@@ -218,20 +236,18 @@ function movePlayer(game, playerIndex, amount) {
 function countCardsOfTypeOnPlayerBoard(game, playerIndex, type) {
   let total = game.players[playerIndex].columns.reduce(
     (total, column) =>
-      total + column.filter((card) => card.type === type).length,
+      total +
+      column.filter((card) => card.faceUp !== false && card.type === type).length,
     0
   );
-
-  if (type === "zombie" && game.players[playerIndex].position === 8) {
-    total += 1;
-  }
 
   return total;
 }
 
 function countChiefsOnPlayerBoard(game, playerIndex) {
   return game.players[playerIndex].columns.reduce(
-    (total, column) => total + column.filter((card) => card.chief).length,
+    (total, column) =>
+      total + column.filter((card) => card.faceUp !== false && card.chief).length,
     0
   );
 }
@@ -300,7 +316,8 @@ function createRefletOptions(game, playerIndex, columnIndex) {
         direction: "left",
         columnIndex: columnIndex - 1,
         cardValue: leftCard.value,
-        cardType: leftCard.type,
+        cardType: leftCard.faceUp !== false ? leftCard.type : null,
+        cardFaceUp: leftCard.faceUp !== false,
       });
     }
   }
@@ -312,7 +329,8 @@ function createRefletOptions(game, playerIndex, columnIndex) {
         direction: "right",
         columnIndex: columnIndex + 1,
         cardValue: rightCard.value,
-        cardType: rightCard.type,
+        cardType: rightCard.faceUp !== false ? rightCard.type : null,
+        cardFaceUp: rightCard.faceUp !== false,
       });
     }
   }
@@ -336,27 +354,25 @@ function resolveRefletChoice(game, direction) {
   movePlayer(game, pendingChoice.playerIndex, option.cardValue);
   recordCardMovement(game, "reflet", option.cardValue);
   game.log.unshift(
-    `${game.players[pendingChoice.playerIndex].name} choisit ${direction === "left" ? "gauche" : "droite"} pour son reflet : +${option.cardValue} grace a ${getTypeLabel(option.cardType)} ${option.cardValue}.`
+    `${game.players[pendingChoice.playerIndex].name} choisit ${direction === "left" ? "gauche" : "droite"} pour son reflet : +${option.cardValue} grace a ${option.cardFaceUp ? `${getTypeLabel(option.cardType)} ${option.cardValue}` : `une carte retournee ${option.cardValue}`}.`
   );
   game.pendingChoice = null;
 }
 
-function createDiscardOptions(game) {
+function createFlipOptions(game) {
   const options = [];
 
   game.players.forEach((player, playerIndex) => {
     player.columns.forEach((column, columnIndex) => {
-      const topCard = getTopCard(column);
-
-      if (!topCard) {
-        return;
-      }
-
-      options.push({
-        targetPlayerIndex: playerIndex,
-        columnIndex,
-        cardType: topCard.type,
-        cardValue: topCard.value,
+      column.forEach((card, rowIndex) => {
+        options.push({
+          targetPlayerIndex: playerIndex,
+          columnIndex,
+          rowIndex,
+          cardType: card.faceUp !== false ? card.type : null,
+          cardValue: card.value,
+          faceUp: card.faceUp !== false,
+        });
       });
     });
   });
@@ -366,54 +382,74 @@ function createDiscardOptions(game) {
 
 function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = {}) {
   const player = game.players[playerIndex];
+  const skippedCase = options.skipBoardCase ?? null;
 
   if (
     player.position === 5 &&
     previousPosition !== 5 &&
-    !options.skipDiscardEffect
+    skippedCase !== 5
   ) {
     ensureStats(game).caseEntries[5] += 1;
-    const options = createDiscardOptions(game);
+    const flipOptions = createFlipOptions(game);
 
-    if (!options.length) {
+    if (!flipOptions.length) {
       game.log.unshift(
-        `${player.name} atteint la case 5, mais aucune carte n'est disponible a defausser.`
+        `${player.name} atteint la case 5, mais aucune carte n'est disponible a retourner.`
       );
       return;
     }
 
     game.pendingChoice = {
-      type: "board_discard",
+      type: "board_flip",
       playerIndex,
       optional: true,
-      options,
+      sourceCase: 5,
+      options: flipOptions,
     };
     ensureStats(game).case5.prompts += 1;
     game.log.unshift(
-      `${player.name} atteint la case 5 et peut defausser la carte du dessus d'une colonne.`
+      `${player.name} atteint la case 5 et peut retourner une carte, chez lui ou chez l'adversaire.`
     );
     return;
   }
 
-  if (player.position === 8 && previousPosition !== 8) {
+  if (player.position === 8 && previousPosition !== 8 && skippedCase !== 8) {
     ensureStats(game).caseEntries[8] += 1;
+    const flipOptions = createFlipOptions(game);
+
+    if (!flipOptions.length) {
+      game.log.unshift(
+        `${player.name} atteint la case 8, mais aucune carte n'est disponible a retourner.`
+      );
+      return;
+    }
+
+    game.pendingChoice = {
+      type: "board_flip",
+      playerIndex,
+      optional: true,
+      sourceCase: 8,
+      options: flipOptions,
+    };
     game.log.unshift(
-      `${player.name} est sur la case 8 : il compte comme ayant un zombie supplementaire.`
+      `${player.name} atteint la case 8 et peut retourner une carte, chez lui ou chez l'adversaire.`
     );
   }
 }
 
-function resolveBoardDiscardChoice(game, action) {
+function resolveBoardFlipChoice(game, action) {
   const pendingChoice = game.pendingChoice;
 
-  if (!pendingChoice || pendingChoice.type !== "board_discard") {
-    throw new Error("Aucune defausse de plateau en attente.");
+  if (!pendingChoice || pendingChoice.type !== "board_flip") {
+    throw new Error("Aucun retournement de plateau en attente.");
   }
 
   if (action.skip) {
-    ensureStats(game).case5.skipped += 1;
+    if (pendingChoice.sourceCase === 5) {
+      ensureStats(game).case5.skipped += 1;
+    }
     game.log.unshift(
-      `${game.players[pendingChoice.playerIndex].name} choisit de ne pas utiliser la defausse de la case 5.`
+      `${game.players[pendingChoice.playerIndex].name} choisit de ne pas retourner de carte sur la case ${pendingChoice.sourceCase}.`
     );
     game.pendingChoice = null;
     return;
@@ -422,25 +458,42 @@ function resolveBoardDiscardChoice(game, action) {
   const option = pendingChoice.options.find(
     (entry) =>
       entry.targetPlayerIndex === action.targetPlayerIndex &&
-      entry.columnIndex === action.columnIndex
+      entry.columnIndex === action.columnIndex &&
+      entry.rowIndex === action.rowIndex
   );
 
   if (!option) {
-    throw new Error("Cible de defausse invalide.");
+    throw new Error("Cible de retournement invalide.");
   }
 
-  const targetColumn =
-    game.players[action.targetPlayerIndex].columns[action.columnIndex];
-  const discarded = targetColumn.pop();
-  ensureStats(game).case5.used += 1;
+  const targetCard =
+    game.players[action.targetPlayerIndex].columns[action.columnIndex]?.[action.rowIndex];
+
+  if (!targetCard) {
+    throw new Error("Carte introuvable.");
+  }
+
+  targetCard.faceUp = !(targetCard.faceUp !== false);
+
+  if (pendingChoice.sourceCase === 5) {
+    ensureStats(game).case5.used += 1;
+  }
 
   game.log.unshift(
-    `${game.players[pendingChoice.playerIndex].name} defausse ${getTypeLabel(discarded.type)} ${discarded.value} en haut de la colonne ${action.columnIndex + 1} de ${game.players[action.targetPlayerIndex].name}.`
+    `${game.players[pendingChoice.playerIndex].name} retourne la carte de rang ${action.rowIndex + 1} dans la colonne ${action.columnIndex + 1} de ${game.players[action.targetPlayerIndex].name}.`
   );
   game.pendingChoice = null;
 }
 
 function applyCardEffect(game, playerIndex, card, columnIndex) {
+  if (card.faceUp === false) {
+    movePlayer(game, playerIndex, 1);
+    game.log.unshift(
+      `${game.players[playerIndex].name} joue une carte retournee ${card.value} : recto -> +1`
+    );
+    return;
+  }
+
   switch (card.type) {
     case "slime":
       recordCardActivation(game, "slime");
@@ -457,7 +510,9 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       const hasMoonOnBoardCase =
         playerColumn.length === 1 &&
         (game.players[playerIndex].columnMoons?.[columnIndex] || 0) > 0;
-      const shouldReplay = Boolean((cardBelow && cardBelow.moon) || hasMoonOnBoardCase);
+      const shouldReplay = Boolean(
+        (cardBelow && cardBelow.faceUp !== false && cardBelow.moon) || hasMoonOnBoardCase
+      );
 
       game.extraTurn = shouldReplay;
       game.log.unshift(
@@ -510,9 +565,6 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
     }
     case "zombie": {
       recordCardActivation(game, "zombie");
-      if (game.players[playerIndex].position === 8) {
-        ensureStats(game).case8ZombieBoosts += 1;
-      }
       const zombieCount = countCardsOfTypeOnPlayerBoard(game, playerIndex, "zombie");
       const moveByZombieCount = {
         1: 1,
@@ -552,7 +604,7 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
         movePlayer(game, playerIndex, options[0].cardValue);
         recordCardMovement(game, "reflet", options[0].cardValue);
         game.log.unshift(
-          `${game.players[playerIndex].name} active Reflet ${card.value} : +${options[0].cardValue} grace a ${getTypeLabel(options[0].cardType)} ${options[0].cardValue}`
+          `${game.players[playerIndex].name} active Reflet ${card.value} : +${options[0].cardValue} grace a ${options[0].cardFaceUp ? `${getTypeLabel(options[0].cardType)} ${options[0].cardValue}` : `une carte retournee ${options[0].cardValue}`}`
         );
         return;
       }
@@ -680,7 +732,8 @@ function sanitizeGame(game, playerId) {
   const activePlayerBlocked =
     game.phase === "playing" &&
     !game.pendingChoice &&
-    !canPlayAnyCard(game.row, currentPlayer.columns);
+    !canPlayAnyCard(game.row, currentPlayer.columns) &&
+    !canPlayDeckTopCard(game, game.currentPlayer);
 
   let pendingChoice = null;
 
@@ -698,21 +751,39 @@ function sanitizeGame(game, playerId) {
       };
     }
 
-    if (game.pendingChoice.type === "board_discard") {
+    if (game.pendingChoice.type === "board_flip") {
       pendingChoice = {
         type: game.pendingChoice.type,
         optional: true,
+        sourceCase: game.pendingChoice.sourceCase,
         options: game.pendingChoice.options.map((option) => ({
           targetPlayerIndex: option.targetPlayerIndex,
           targetPlayerName: game.players[option.targetPlayerIndex].name,
           columnIndex: option.columnIndex,
+          rowIndex: option.rowIndex,
           cardValue: option.cardValue,
           cardType: option.cardType,
-          cardLabel: getTypeLabel(option.cardType),
+          cardFaceUp: option.faceUp,
+          cardLabel: option.faceUp ? getTypeLabel(option.cardType) : "Carte retournee",
         })),
       };
     }
   }
+
+  const visiblePlayers = game.players.map((player) => ({
+    ...player,
+    columns: player.columns.map((column) =>
+      column.map((card) =>
+        card.faceUp === false
+          ? {
+              id: card.id,
+              value: card.value,
+              faceUp: false,
+            }
+          : card
+      )
+    ),
+  }));
 
   return {
     id: game.id,
@@ -725,9 +796,9 @@ function sanitizeGame(game, playerId) {
     currentPlayerName: currentPlayer.name,
     selectedCardIndex: game.selectedCardIndex,
     pendingChoice,
-    deck: game.deck,
+    deckCount: game.deck.length,
     row: game.row,
-    players: game.players,
+    players: visiblePlayers,
     log: game.log,
     viewerPlayerIndex,
     viewerCanAct:
@@ -797,30 +868,32 @@ function expandPendingChoicesForOutcome(state, playerId, actions) {
     });
   }
 
-  if (state.pendingChoice.type === "board_discard") {
+  if (state.pendingChoice.type === "board_flip") {
     const skipState = clone(state);
     performAction(skipState, playerId, {
-      type: "resolve_board_discard",
+      type: "resolve_board_flip",
       skip: true,
     });
     const discardOutcomes = expandPendingChoicesForOutcome(skipState, playerId, [
       ...actions,
-      { type: "resolve_board_discard", skip: true },
+      { type: "resolve_board_flip", skip: true },
     ]);
 
     const targetedOutcomes = state.pendingChoice.options.flatMap((option) => {
       const nextState = clone(state);
       performAction(nextState, playerId, {
-        type: "resolve_board_discard",
+        type: "resolve_board_flip",
         targetPlayerIndex: option.targetPlayerIndex,
         columnIndex: option.columnIndex,
+        rowIndex: option.rowIndex,
       });
       return expandPendingChoicesForOutcome(nextState, playerId, [
         ...actions,
         {
-          type: "resolve_board_discard",
+          type: "resolve_board_flip",
           targetPlayerIndex: option.targetPlayerIndex,
           columnIndex: option.columnIndex,
+          rowIndex: option.rowIndex,
         },
       ]);
     });
@@ -840,7 +913,8 @@ function getLegalTurnOutcomes(game, playerIndex) {
   }
 
   const player = game.players[playerIndex];
-  const blocked = !canPlayAnyCard(game.row, player.columns);
+  const blocked =
+    !canPlayAnyCard(game.row, player.columns) && !canPlayDeckTopCard(game, playerIndex);
 
   if (blocked) {
     for (let columnIndex = 0; columnIndex < player.columns.length; columnIndex += 1) {
@@ -883,6 +957,24 @@ function getLegalTurnOutcomes(game, playerIndex) {
       outcomes.push(...expanded);
     });
   });
+
+  if (game.deck.length > 0) {
+    player.columns.forEach((column, columnIndex) => {
+      if (!canPlaceCardInColumn(game.deck[0], column)) {
+        return;
+      }
+
+      const nextState = clone(game);
+      performAction(nextState, playerId, {
+        type: "play_hidden_card",
+        columnIndex,
+      });
+      outcomes.push({
+        actions: [{ type: "play_hidden_card", columnIndex }],
+        resultingState: nextState,
+      });
+    });
+  }
 
   return outcomes;
 }
@@ -1010,7 +1102,7 @@ function finalizeTurnAfterResolvedPlay(
   const pendingPlay = game.pendingPlay || null;
 
   maybeTriggerBoardEffect(game, playerIndex, previousPosition, {
-    skipDiscardEffect: Boolean(pendingPlay?.boardDiscardResolved),
+    skipBoardCase: pendingPlay?.boardFlipResolvedCase ?? null,
   });
 
   if (game.pendingChoice) {
@@ -1119,16 +1211,17 @@ function performAction(game, playerId, action) {
     return;
   }
 
-  if (action.type === "resolve_board_discard") {
+  if (action.type === "resolve_board_flip") {
     if (!game.pendingChoice || game.pendingChoice.playerIndex !== playerIndex) {
       throw new Error("Aucun choix de plateau en attente.");
     }
 
     const pendingPlay = game.pendingPlay;
-    resolveBoardDiscardChoice(game, action);
+    const sourceCase = game.pendingChoice.sourceCase;
+    resolveBoardFlipChoice(game, action);
     game.pendingPlay = {
       ...(pendingPlay || {}),
-      boardDiscardResolved: true,
+      boardFlipResolvedCase: sourceCase,
     };
     finalizeTurnAfterResolvedPlay(
       game,
@@ -1144,7 +1237,8 @@ function performAction(game, playerId, action) {
     throw new Error("Un choix est en attente avant de poursuivre.");
   }
 
-  const blocked = !canPlayAnyCard(game.row, player.columns);
+  const blocked =
+    !canPlayAnyCard(game.row, player.columns) && !canPlayDeckTopCard(game, playerIndex);
   game.extraTurn = false;
 
   if (action.type === "select_card") {
@@ -1201,7 +1295,7 @@ function performAction(game, playerId, action) {
     if (game.pendingChoice) {
       game.pendingPlay = {
         wasLeftmostCard,
-        boardDiscardResolved: false,
+        boardFlipResolvedCase: null,
         previousPosition,
       };
       game.selectedCardIndex = null;
@@ -1215,6 +1309,54 @@ function performAction(game, playerId, action) {
       wasLeftmostCard,
       previousPosition
     );
+    return;
+  }
+
+  if (action.type === "play_hidden_card") {
+    if (blocked) {
+      throw new Error("Impossible de jouer une carte cachee, il faut defausser une colonne.");
+    }
+
+    const columnIndex = action.columnIndex;
+    const targetColumn = player.columns[columnIndex];
+    const deckCard = game.deck[0];
+
+    if (!targetColumn || !deckCard) {
+      throw new Error("Cible invalide.");
+    }
+
+    if (!canPlaceCardInColumn(deckCard, targetColumn)) {
+      throw new Error(
+        `Pose interdite : ${deckCard.value} doit etre >= a ${getTopValue(targetColumn)}.`
+      );
+    }
+
+    const previousPosition = player.position;
+    const hiddenCard = {
+      ...deckCard,
+      faceUp: false,
+    };
+
+    targetColumn.push(hiddenCard);
+    game.deck.shift();
+    game.selectedCardIndex = null;
+    game.log.unshift(
+      `${player.name} pioche une carte face cachee et la joue dans sa colonne ${columnIndex + 1}`
+    );
+
+    applyCardEffect(game, playerIndex, hiddenCard, columnIndex);
+
+    if (game.pendingChoice) {
+      game.pendingPlay = {
+        wasLeftmostCard: false,
+        boardFlipResolvedCase: null,
+        previousPosition,
+      };
+      game.updatedAt = Date.now();
+      return;
+    }
+
+    finalizeTurnAfterResolvedPlay(game, playerIndex, false, previousPosition);
     return;
   }
 
