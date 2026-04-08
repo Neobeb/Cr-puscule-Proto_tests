@@ -2,6 +2,16 @@ import { CREATURES } from "../data/creatures";
 
 const CARD_WIDTH = 112;
 const CARD_HEIGHT = 156;
+const EFFECT_HINTS = {
+  sorciere: "🧭 zone +3",
+  vampire: "🩸 face",
+  squelette: "🌙 +1 ↺",
+  loup: "🌙x2 adv",
+  zombie: "🧟 cumul",
+  reflet: "↔ meme niv",
+  masque: "🎭 col. cachees",
+  slime: "🟩 libre",
+};
 
 export default function CardView({
   card,
@@ -15,6 +25,7 @@ export default function CardView({
     : "linear-gradient(180deg, #0f172a 0%, #1e293b 100%)";
   const textColor = isFaceUp ? "#0f172a" : "#f8fafc";
   const displayedValue = isFaceUp ? card.value : 0;
+  const effectHint = isFaceUp ? EFFECT_HINTS[card.type] || "" : "🂠 recto +1";
 
   return (
     <div
@@ -116,15 +127,17 @@ export default function CardView({
         <div
           style={{
             minHeight: 24,
-            fontSize: 11,
+            fontSize: 10,
             lineHeight: 1.15,
-            opacity: isFaceUp ? 0.78 : 0.95,
+            opacity: isFaceUp ? 0.82 : 0.95,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            textAlign: "center",
+            fontWeight: 700,
           }}
         >
-          {!isFaceUp ? "Effet joue : +1" : " "}
+          {effectHint}
         </div>
       </div>
     </div>
