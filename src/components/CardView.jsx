@@ -1,7 +1,7 @@
 import { CREATURES } from "../data/creatures";
 
 const CARD_WIDTH = 112;
-const CARD_HEIGHT = 156;
+const CARD_HEIGHT = 148;
 const EFFECT_HINTS = {
   sorciere: "🧭 zone +3",
   vampire: "🩸 face",
@@ -102,10 +102,11 @@ export default function CardView({
             fontSize: 13,
             fontWeight: 800,
             lineHeight: 1.1,
-            minHeight: 30,
+            minHeight: 28,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            textAlign: "center",
           }}
         >
           {isFaceUp ? creature?.label || card.type : "Carte retournee"}
@@ -126,8 +127,8 @@ export default function CardView({
 
         <div
           style={{
-            minHeight: 28,
-            fontSize: 9,
+            minHeight: 22,
+            fontSize: 8,
             lineHeight: 1.2,
             opacity: isFaceUp ? 0.82 : 0.95,
             display: "flex",
@@ -136,8 +137,11 @@ export default function CardView({
             textAlign: "center",
             fontWeight: 700,
             width: "100%",
-            padding: "0 2px",
+            padding: "4px 6px",
             letterSpacing: 0.1,
+            borderRadius: 8,
+            background: isFaceUp ? "rgba(255,255,255,0.46)" : "rgba(255,255,255,0.1)",
+            boxSizing: "border-box",
           }}
         >
           {effectHint}

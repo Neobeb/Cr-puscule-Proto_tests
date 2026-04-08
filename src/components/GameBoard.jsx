@@ -2,12 +2,16 @@ import CardView from "./CardView";
 import Stars from "./Stars";
 
 const COLUMN_WIDTH = 176;
-const COLUMN_CARD_AREA_HEIGHT = 672;
-const STACK_CARD_HEIGHT = 156;
-const STACK_STEP = 38;
+const COLUMN_CARD_AREA_MIN_HEIGHT = 170;
+const STACK_CARD_HEIGHT = 148;
+const STACK_STEP = 34;
 
 function renderColumn(player, columnIndex, anchorToCenter = "bottom") {
   const column = player.columns[columnIndex];
+  const stackHeight = Math.max(
+    STACK_CARD_HEIGHT,
+    STACK_CARD_HEIGHT + Math.max(0, column.length - 1) * STACK_STEP
+  );
   const moonCount =
     (player.columnMoons?.[columnIndex] || 0) +
     column.reduce(
@@ -19,7 +23,6 @@ function renderColumn(player, columnIndex, anchorToCenter = "bottom") {
     <div
       style={{
         width: COLUMN_WIDTH,
-        height: "100%",
         border: "1px solid #cbd5e1",
         background:
           "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.95) 100%)",
@@ -50,10 +53,7 @@ function renderColumn(player, columnIndex, anchorToCenter = "bottom") {
       <div
         style={{
           width: "100%",
-          minHeight: COLUMN_CARD_AREA_HEIGHT,
-          maxHeight: COLUMN_CARD_AREA_HEIGHT,
-          overflowY: "auto",
-          paddingRight: 4,
+          minHeight: Math.max(COLUMN_CARD_AREA_MIN_HEIGHT, stackHeight),
           display: "flex",
           justifyContent: anchorToCenter === "bottom" ? "flex-end" : "flex-start",
         }}
@@ -62,10 +62,7 @@ function renderColumn(player, columnIndex, anchorToCenter = "bottom") {
           style={{
             position: "relative",
             width: "100%",
-            height: Math.max(
-              STACK_CARD_HEIGHT,
-              STACK_CARD_HEIGHT + Math.max(0, column.length - 1) * STACK_STEP
-            ),
+            height: stackHeight,
           }}
         >
           {column.map((card, index) => {
@@ -336,6 +333,8 @@ export default function GameBoard({
               }}
               style={{
                 cursor: !winner && currentPlayer === 0 && canInteract ? "pointer" : "default",
+                display: "flex",
+                alignItems: "flex-end",
               }}
             >
               {renderColumn(players[0], columnIndex, "bottom")}
@@ -381,6 +380,8 @@ export default function GameBoard({
               }}
               style={{
                 cursor: !winner && currentPlayer === 1 && canInteract ? "pointer" : "default",
+                display: "flex",
+                alignItems: "flex-start",
               }}
             >
               {renderColumn(players[1], columnIndex, "top")}
