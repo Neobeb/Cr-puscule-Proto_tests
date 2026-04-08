@@ -128,10 +128,16 @@ export default function App() {
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
   const [hiddenDrawMode, setHiddenDrawMode] = useState(false);
+  const [animationState, setAnimationState] = useState({
+    movedPlayers: [],
+    starBurst: false,
+    victory: false,
+  });
   const [connectionState, setConnectionState] = useState(
     initialSession.gameId && initialSession.playerId ? "connecting" : "idle"
   );
   const eventSourceRef = useRef(null);
+  const previousGameRef = useRef(null);
 
   useEffect(() => {
     if (!session.gameId || !session.playerId) {
@@ -299,6 +305,47 @@ export default function App() {
     }
   }, [viewerCanAct, pendingChoice, activePlayerBlocked, selectedCard]);
 
+  useEffect(() => {
+    if (!game || !previousGameRef.current) {
+      previousGameRef.current = game;
+      return;
+    }
+
+    const previousGame = previousGameRef.current;
+    const movedPlayers = game.players
+      .map((player, index) =>
+        player.position !== previousGame.players?.[index]?.position ? index : null
+      )
+      .filter((value) => value !== null);
+
+    const starBurst = game.players.some(
+      (player, index) => player.stars > (previousGame.players?.[index]?.stars || 0)
+    );
+    const victory = Boolean(game.winner && game.winner !== previousGame.winner);
+
+    if (movedPlayers.length || starBurst || victory) {
+      setAnimationState({
+        movedPlayers,
+        starBurst,
+        victory,
+      });
+
+      const timeout = window.setTimeout(() => {
+        setAnimationState({
+          movedPlayers: [],
+          starBurst: false,
+          victory: false,
+        });
+      }, victory ? 1800 : 900);
+
+      previousGameRef.current = game;
+      return () => window.clearTimeout(timeout);
+    }
+
+    previousGameRef.current = game;
+    return undefined;
+  }, [game]);
+
   return (
     <div
       style={{
@@ -310,6 +357,23 @@ export default function App() {
         boxSizing: "border-box",
       }}
     >
+      <style>{`
+        @keyframes tokenHop {
+          0% { transform: translateY(8px) scale(0.94); opacity: 0.5; }
+          55% { transform: translateY(-6px) scale(1.06); opacity: 1; }
+          100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        @keyframes starBurst {
+          0% { transform: scale(0.96); box-shadow: 0 0 0 rgba(245,158,11,0); }
+          45% { transform: scale(1.06); box-shadow: 0 0 34px rgba(245,158,11,0.38); }
+          100% { transform: scale(1); box-shadow: 0 16px 28px rgba(245,158,11,0.18); }
+        }
+        @keyframes victoryGlow {
+          0% { text-shadow: 0 0 0 rgba(245,158,11,0); transform: scale(1); }
+          50% { text-shadow: 0 0 18px rgba(245,158,11,0.7); transform: scale(1.03); }
+          100% { text-shadow: 0 0 0 rgba(245,158,11,0); transform: scale(1); }
+        }
+      `}</style>
       <div style={{ maxWidth: 1320, margin: "0 auto" }}>
         <header
           style={{
@@ -484,7 +548,9 @@ export default function App() {
                     {game.phase === "lobby" ? (
                       <StatusPill label="Salle en attente" tone="warn" />
                     ) : game.winner ? (
-                      <StatusPill label={`Victoire : ${game.winner}`} tone="good" />
+                      <div style={{ animation: animationState.victory ? "victoryGlow 1400ms ease-in-out infinite" : "none" }}>
+                        <StatusPill label={`Victoire : ${game.winner}`} tone="good" />
+                      </div>
                     ) : pendingChoice ? (
                       <StatusPill label="Choix en attente" tone="warn" />
                     ) : viewerCanAct ? (
@@ -653,6 +719,7 @@ export default function App() {
                 activePlayerBlocked={activePlayerBlocked}
                 winner={game.winner}
                 canInteract={viewerCanAct && game.phase === "playing" && !pendingChoice}
+                animationState={animationState}
                 onColumnClick={(columnIndex) =>
                   hiddenDrawMode
                     ? sendAction({
