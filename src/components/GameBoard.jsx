@@ -98,7 +98,7 @@ function renderColumn(player, columnIndex, anchorToCenter = "bottom") {
           }}
         >
           {column.map((card, index) => {
-            const offset = index * STACK_STEP;
+            const offset = (column.length - 1 - index) * STACK_STEP;
 
             return (
               <div
