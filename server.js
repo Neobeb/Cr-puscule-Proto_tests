@@ -189,7 +189,15 @@ function getTopValue(column) {
     return 0;
   }
 
-  return getCardEffectiveValue(column[column.length - 1]);
+  for (let index = column.length - 1; index >= 0; index -= 1) {
+    const card = column[index];
+
+    if (card.faceUp !== false) {
+      return getCardEffectiveValue(card);
+    }
+  }
+
+  return 0;
 }
 
 function canPlaceCardInColumn(card, column) {
@@ -209,7 +217,7 @@ function canPlayDeckTopCard(game, playerIndex) {
     return false;
   }
 
-  return game.players[playerIndex].columns.some((column) => getTopValue(column) <= 0);
+  return game.players[playerIndex].columns.length > 0;
 }
 
 function countMoonsInColumn(column, baseMoons = 0) {
@@ -336,6 +344,52 @@ function resolveStarGain(game, playerIndex, reason, source = "case12") {
   game.log.unshift(
     `Reprise apres etoile : ${game.players[0].name} avance de ${chiefsPlayer0} grace a ses chefs, ${game.players[1].name} avance de ${chiefsPlayer1}.`
   );
+}
+
+function resolveDeckExhaustedEndgame(game) {
+  if (game.winner || game.deck.length > 0 || game.row.length > 0) {
+    return false;
+  }
+
+  const [playerA, playerB] = game.players;
+
+  if (playerA.stars > playerB.stars) {
+    game.winner = playerA.name;
+    game.log.unshift(
+      `${playerA.name} gagne la partie : la pioche est vide et il a plus d'etoiles (${playerA.stars} contre ${playerB.stars}).`
+    );
+    return true;
+  }
+
+  if (playerB.stars > playerA.stars) {
+    game.winner = playerB.name;
+    game.log.unshift(
+      `${playerB.name} gagne la partie : la pioche est vide et il a plus d'etoiles (${playerB.stars} contre ${playerA.stars}).`
+    );
+    return true;
+  }
+
+  if (playerA.position > playerB.position) {
+    game.winner = playerA.name;
+    game.log.unshift(
+      `${playerA.name} gagne la partie : egalite aux etoiles, mais il est plus avance (${playerA.position} contre ${playerB.position}).`
+    );
+    return true;
+  }
+
+  if (playerB.position > playerA.position) {
+    game.winner = playerB.name;
+    game.log.unshift(
+      `${playerB.name} gagne la partie : egalite aux etoiles, mais il est plus avance (${playerB.position} contre ${playerA.position}).`
+    );
+    return true;
+  }
+
+  game.winner = "Victoire partagee";
+  game.log.unshift(
+    `Victoire partagee : la pioche est vide, les etoiles sont egales (${playerA.stars}-${playerB.stars}) et les positions aussi (${playerA.position}-${playerB.position}).`
+  );
+  return true;
 }
 
 function createRefletOptions(game, playerIndex, columnIndex) {
@@ -571,7 +625,7 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
   if (card.faceUp === false) {
     movePlayer(game, playerIndex, 1);
     game.log.unshift(
-      `${game.players[playerIndex].name} joue une carte retournee sans valeur : recto -> +1`
+      `${game.players[playerIndex].name} joue une carte cachee sans valeur ni effet : +1`
     );
     return;
   }
@@ -987,6 +1041,10 @@ function evaluateGameForBot(game, botIndex) {
 }
 
 function expandPendingChoicesForOutcome(state, playerId, actions) {
+  if (state.winner) {
+    return [{ actions, resultingState: state }];
+  }
+
   if (!state.pendingChoice) {
     return [{ actions, resultingState: state }];
   }
@@ -1118,10 +1176,6 @@ function getLegalTurnOutcomes(game, playerIndex) {
 
   if (game.deck.length > 0) {
     player.columns.forEach((column, columnIndex) => {
-      if (getTopValue(column) > 0) {
-        return;
-      }
-
       const nextState = clone(game);
       performAction(nextState, playerId, {
         type: "play_hidden_card",
@@ -1409,6 +1463,12 @@ function finalizeTurnAfterResolvedPlay(
     }
   }
 
+  if (resolveDeckExhaustedEndgame(game)) {
+    game.selectedCardIndex = null;
+    game.updatedAt = Date.now();
+    return;
+  }
+
   game.selectedCardIndex = null;
 
   if (game.extraTurn) {
@@ -1423,6 +1483,10 @@ function finalizeTurnAfterResolvedPlay(
 }
 
 function ensureRowAvailable(game) {
+  if (resolveDeckExhaustedEndgame(game)) {
+    return;
+  }
+
   if (game.row.length > 0 || game.deck.length === 0) {
     return;
   }
@@ -1457,6 +1521,8 @@ function performAction(game, playerId, action) {
   if (game.phase !== "playing") {
     throw new Error("La partie n'a pas encore commence.");
   }
+
+  resolveDeckExhaustedEndgame(game);
 
   if (game.winner) {
     throw new Error("La partie est terminee.");
@@ -1626,16 +1692,15 @@ function performAction(game, playerId, action) {
       throw new Error("Cible invalide.");
     }
 
-    if (getTopValue(targetColumn) > 0) {
-      throw new Error(
-        "Pose interdite : une carte retournee ne peut etre jouee que sur une colonne dont le dessus vaut 0."
-      );
-    }
-
     const previousPosition = player.position;
     const hiddenCard = {
-      ...deckCard,
+      id: `hidden-${crypto.randomUUID()}`,
+      type: "hidden",
+      value: null,
+      moon: false,
+      chief: false,
       faceUp: false,
+      hiddenToken: true,
     };
 
     targetColumn.push(hiddenCard);
@@ -1671,6 +1736,10 @@ function performAction(game, playerId, action) {
 
     if (!player.columns[columnIndex]) {
       throw new Error("Colonne introuvable.");
+    }
+
+    if (player.columns[columnIndex].length === 0) {
+      throw new Error("Impossible de defausser une colonne vide.");
     }
 
     player.columns[columnIndex] = [];
