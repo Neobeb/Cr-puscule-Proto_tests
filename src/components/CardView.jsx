@@ -1,5 +1,8 @@
 import { CREATURES } from "../data/creatures";
 
+const CARD_WIDTH = 112;
+const CARD_HEIGHT = 156;
+
 export default function CardView({
   card,
   isLeftmost = false,
@@ -9,24 +12,43 @@ export default function CardView({
   const isFaceUp = card.faceUp !== false;
   const background = isFaceUp
     ? creature?.color || "white"
-    : "linear-gradient(135deg, #1e293b 0%, #334155 100%)";
-  const textColor = isFaceUp ? "#0f172a" : "white";
+    : "linear-gradient(180deg, #0f172a 0%, #1e293b 100%)";
+  const textColor = isFaceUp ? "#0f172a" : "#f8fafc";
   const displayedValue = isFaceUp ? card.value : 0;
 
   return (
     <div
       style={{
+        width: CARD_WIDTH,
+        height: CARD_HEIGHT,
         background,
-        border: isSelected ? "3px solid blue" : "1px solid black",
-        borderRadius: 8,
-        padding: 8,
-        minWidth: 96,
+        border: isSelected ? "3px solid #2563eb" : "1px solid rgba(15,23,42,0.28)",
+        borderRadius: 14,
+        padding: 10,
+        boxSizing: "border-box",
         textAlign: "center",
         position: "relative",
         color: textColor,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        boxShadow: isSelected
+          ? "0 0 0 3px rgba(37,99,235,0.15), 0 12px 24px rgba(15,23,42,0.18)"
+          : "0 10px 22px rgba(15,23,42,0.12)",
       }}
     >
-      <div style={{ position: "absolute", top: 6, left: 6, display: "flex", gap: 4 }}>
+      <div
+        style={{
+          position: "absolute",
+          top: 8,
+          left: 8,
+          display: "flex",
+          gap: 4,
+          maxWidth: "calc(100% - 16px)",
+          flexWrap: "wrap",
+          justifyContent: "flex-start",
+        }}
+      >
         {isFaceUp && card.moon ? (
           <span title="Lune" style={badgeStyle}>
             🌙
@@ -44,32 +66,77 @@ export default function CardView({
         ) : null}
       </div>
 
-      <div style={{ fontSize: 28, marginBottom: 6 }}>
-        {isFaceUp ? creature?.icon || "?" : "🂠"}
+      <div style={{ minHeight: 16, display: "flex", justifyContent: "flex-end" }}>
+        {isLeftmost ? (
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: 0.8,
+              textTransform: "uppercase",
+              color: isFaceUp ? "#475569" : "#cbd5e1",
+            }}
+          >
+            gauche
+          </span>
+        ) : null}
       </div>
 
-      <div style={{ fontSize: 12, fontWeight: "bold" }}>
-        {isFaceUp ? creature?.label || card.type : "Carte retournee"}
+      <div style={{ paddingTop: 8 }}>
+        <div style={{ fontSize: 30, lineHeight: 1, marginBottom: 8 }}>
+          {isFaceUp ? creature?.icon || "?" : "🂠"}
+        </div>
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 800,
+            lineHeight: 1.1,
+            minHeight: 30,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {isFaceUp ? creature?.label || card.type : "Carte retournee"}
+        </div>
       </div>
 
-      <div style={{ fontSize: 24, fontWeight: "bold", marginTop: 4 }}>
-        {displayedValue}
+      <div>
+        <div
+          style={{
+            fontSize: 34,
+            fontWeight: 900,
+            lineHeight: 1,
+            marginBottom: 6,
+          }}
+        >
+          {displayedValue}
+        </div>
+
+        <div
+          style={{
+            minHeight: 24,
+            fontSize: 11,
+            lineHeight: 1.15,
+            opacity: isFaceUp ? 0.78 : 0.95,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {!isFaceUp ? "Effet joue : +1" : " "}
+        </div>
       </div>
-
-      {!isFaceUp ? (
-        <div style={{ marginTop: 4, fontSize: 11, opacity: 0.9 }}>Effet joue : +1</div>
-      ) : null}
-
-      {isLeftmost ? <div style={{ marginTop: 6, fontSize: 11 }}>gauche</div> : null}
     </div>
   );
 }
 
 const badgeStyle = {
-  fontSize: 13,
+  fontSize: 12,
   lineHeight: 1,
-  background: "rgba(255,255,255,0.85)",
+  background: "rgba(255,255,255,0.88)",
   color: "#0f172a",
   borderRadius: 999,
-  padding: "2px 4px",
+  padding: "3px 6px",
+  boxShadow: "0 2px 4px rgba(15,23,42,0.12)",
 };
