@@ -992,7 +992,7 @@ function getLegalTurnOutcomes(game, playerIndex) {
 
   if (game.deck.length > 0) {
     player.columns.forEach((column, columnIndex) => {
-      if (!canPlaceCardInColumn(game.deck[0], column)) {
+      if (getTopValue(column) > 0) {
         return;
       }
 
@@ -1009,6 +1009,92 @@ function getLegalTurnOutcomes(game, playerIndex) {
   }
 
   return outcomes;
+}
+
+function getBotProgressScore(game, botIndex) {
+  const bot = game.players[botIndex];
+  return bot.stars * 100 + bot.position;
+}
+
+function scoreOutcomeForBot(outcome, botIndex, difficulty) {
+  return difficulty <= 0
+    ? evaluateGameForBot(outcome.resultingState, botIndex)
+    : searchBestScore(outcome.resultingState, difficulty - 1, botIndex);
+}
+
+function chooseBestOutcomeFromList(outcomes, botIndex, difficulty) {
+  if (!outcomes.length) {
+    return null;
+  }
+
+  let bestOutcome = outcomes[0];
+  let bestScore = -Infinity;
+
+  for (const outcome of outcomes) {
+    const score = scoreOutcomeForBot(outcome, botIndex, difficulty);
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestOutcome = outcome;
+    }
+  }
+
+  return { ...bestOutcome, score: bestScore };
+}
+
+function chooseBotPendingChoice(game, botIndex) {
+  const bot = game.players[botIndex];
+  const pendingChoice = game.pendingChoice;
+
+  if (!pendingChoice || pendingChoice.playerIndex !== botIndex) {
+    return null;
+  }
+
+  if (pendingChoice.type === "reflet") {
+    const bestOption = [...pendingChoice.options].sort(
+      (a, b) => b.cardValue - a.cardValue
+    )[0];
+
+    return {
+      actions: [
+        { type: "choose_reflet_direction", direction: bestOption.direction },
+      ],
+      score: bestOption.cardValue,
+    };
+  }
+
+  if (pendingChoice.type === "board_flip") {
+    const visibleOpponentOptions = pendingChoice.options
+      .filter(
+        (option) =>
+          option.targetPlayerIndex !== botIndex &&
+          option.faceUp &&
+          option.cardValue > 0
+      )
+      .sort((a, b) => b.cardValue - a.cardValue);
+
+    if (visibleOpponentOptions.length) {
+      const target = visibleOpponentOptions[0];
+      return {
+        actions: [
+          {
+            type: "resolve_board_flip",
+            targetPlayerIndex: target.targetPlayerIndex,
+            columnIndex: target.columnIndex,
+            rowIndex: target.rowIndex,
+          },
+        ],
+        score: target.cardValue,
+      };
+    }
+
+    return {
+      actions: [{ type: "resolve_board_flip", skip: true }],
+      score: 0,
+    };
+  }
+
+  return null;
 }
 
 function searchBestScore(game, depth, botIndex) {
@@ -1050,28 +1136,42 @@ function searchBestScore(game, depth, botIndex) {
 }
 
 function chooseBotOutcome(game, botIndex, difficulty) {
+  const pendingChoiceResolution = chooseBotPendingChoice(game, botIndex);
+
+  if (pendingChoiceResolution) {
+    return pendingChoiceResolution;
+  }
+
   const outcomes = getLegalTurnOutcomes(game, botIndex);
 
   if (!outcomes.length) {
     return null;
   }
+  const currentProgress = getBotProgressScore(game, botIndex);
+  const visibleOutcomes = outcomes.filter(
+    (outcome) => outcome.actions[0]?.type === "select_card"
+  );
+  const visibleAdvancingOutcomes = visibleOutcomes.filter(
+    (outcome) => getBotProgressScore(outcome.resultingState, botIndex) > currentProgress
+  );
 
-  let bestOutcome = outcomes[0];
-  let bestScore = -Infinity;
-
-  for (const outcome of outcomes) {
-    const score =
-      difficulty <= 0
-        ? evaluateGameForBot(outcome.resultingState, botIndex)
-        : searchBestScore(outcome.resultingState, difficulty - 1, botIndex);
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestOutcome = outcome;
-    }
+  if (visibleAdvancingOutcomes.length) {
+    return chooseBestOutcomeFromList(visibleAdvancingOutcomes, botIndex, difficulty);
   }
 
-  return { ...bestOutcome, score: bestScore };
+  const hiddenOutcomes = outcomes.filter(
+    (outcome) => outcome.actions[0]?.type === "play_hidden_card"
+  );
+
+  if (hiddenOutcomes.length) {
+    return chooseBestOutcomeFromList(hiddenOutcomes, botIndex, difficulty);
+  }
+
+  if (visibleOutcomes.length) {
+    return chooseBestOutcomeFromList(visibleOutcomes, botIndex, difficulty);
+  }
+
+  return chooseBestOutcomeFromList(outcomes, botIndex, difficulty);
 }
 
 function isBotTurn(game) {
