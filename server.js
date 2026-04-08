@@ -224,7 +224,7 @@ function countMoonsInColumn(column, baseMoons = 0) {
   return (
     baseMoons +
     column.reduce(
-      (total, card) => total + (card.faceUp !== false && card.moon ? 1 : 0),
+      (total, card) => total + ((card.faceUp === false || card.moon) ? 1 : 0),
       0
     )
   );
@@ -646,7 +646,7 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
         playerColumn.length === 1 &&
         (game.players[playerIndex].columnMoons?.[columnIndex] || 0) > 0;
       const shouldReplay = Boolean(
-        (cardBelow && cardBelow.faceUp !== false && cardBelow.moon) || hasMoonOnBoardCase
+        (cardBelow && (cardBelow.faceUp === false || cardBelow.moon)) || hasMoonOnBoardCase
       );
 
       game.extraTurn = shouldReplay;
@@ -969,6 +969,7 @@ function sanitizeGame(game, playerId) {
               id: card.id,
               value: 0,
               faceUp: false,
+              moon: true,
             }
           : card
       )
@@ -1044,6 +1045,12 @@ function expandPendingChoicesForOutcome(state, playerId, actions) {
     return [{ actions, resultingState: state }];
   }
 
+  resolveDeckExhaustedEndgame(state);
+
+  if (state.winner) {
+    return [{ actions, resultingState: state }];
+  }
+
   if (!state.pendingChoice) {
     return [{ actions, resultingState: state }];
   }
@@ -1098,12 +1105,22 @@ function expandPendingChoicesForOutcome(state, playerId, actions) {
   if (state.pendingChoice.type === "spectre_flip") {
     return state.pendingChoice.options.flatMap((option) => {
       const nextState = clone(state);
-      performAction(nextState, playerId, {
-        type: "resolve_spectre_flip",
-        targetPlayerIndex: option.targetPlayerIndex,
-        columnIndex: option.columnIndex,
-        rowIndex: option.rowIndex,
-      });
+      try {
+        performAction(nextState, playerId, {
+          type: "resolve_spectre_flip",
+          targetPlayerIndex: option.targetPlayerIndex,
+          columnIndex: option.columnIndex,
+          rowIndex: option.rowIndex,
+        });
+      } catch (error) {
+        if (error.message === "La partie est terminee.") {
+          return [{
+            actions,
+            resultingState: nextState,
+          }];
+        }
+        throw error;
+      }
       return expandPendingChoicesForOutcome(nextState, playerId, [
         ...actions,
         {
@@ -1397,7 +1414,17 @@ function processBotTurns(game) {
     game.log.unshift(`${bot.name} analyse le plateau (niveau ${difficulty}).`);
 
     for (const action of chosen.actions) {
-      performAction(game, bot.id, action);
+      if (game.winner) {
+        break;
+      }
+      try {
+        performAction(game, bot.id, action);
+      } catch (error) {
+        if (error.message === "La partie est terminee.") {
+          break;
+        }
+        throw error;
+      }
     }
 
     safety += 1;
@@ -1696,7 +1723,7 @@ function performAction(game, playerId, action) {
       id: `hidden-${crypto.randomUUID()}`,
       type: "hidden",
       value: null,
-      moon: false,
+      moon: true,
       chief: false,
       faceUp: false,
       hiddenToken: true,
