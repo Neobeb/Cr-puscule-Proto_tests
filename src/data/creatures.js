@@ -34,6 +34,11 @@ export const CREATURES = {
     color: "#c4b5fd",
     icon: "🎭",
   },
+  spectre: {
+    label: "Spectre",
+    color: "#bfdbfe",
+    icon: "👻",
+  },
   slime: {
     label: "Slime",
     color: "#86efac",
