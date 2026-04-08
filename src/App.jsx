@@ -249,8 +249,10 @@ export default function App() {
         method: "POST",
         body: JSON.stringify({ playerId: session.playerId, ...action }),
       });
+      return true;
     } catch (apiError) {
       setError(apiError.message);
+      return false;
     }
   }
 
@@ -534,12 +536,15 @@ export default function App() {
                     {pendingChoice.options.map((option) => (
                       <button
                         key={option.direction}
-                        onClick={() =>
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
                           sendAction({
                             type: "choose_reflet_direction",
                             direction: option.direction,
-                          })
-                        }
+                          });
+                        }}
                         style={choiceButtonStyle}
                       >
                         {option.direction === "left" ? "Gauche" : "Droite"} :{" "}
@@ -559,14 +564,17 @@ export default function App() {
                     {pendingChoice.options.map((option) => (
                       <button
                         key={`${option.targetPlayerIndex}-${option.columnIndex}-${option.rowIndex}`}
-                        onClick={() =>
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
                           sendAction({
                             type: "resolve_board_flip",
                             targetPlayerIndex: option.targetPlayerIndex,
                             columnIndex: option.columnIndex,
                             rowIndex: option.rowIndex,
-                          })
-                        }
+                          });
+                        }}
                         style={choiceButtonStyle}
                       >
                         {option.targetPlayerName} col {option.columnIndex + 1} rang{" "}
@@ -575,12 +583,15 @@ export default function App() {
                     ))}
                   </div>
                   <button
-                    onClick={() =>
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
                       sendAction({
                         type: "resolve_board_flip",
                         skip: true,
-                      })
-                    }
+                      });
+                    }}
                     style={secondaryChoiceButtonStyle}
                   >
                     Ne rien retourner
@@ -647,7 +658,11 @@ export default function App() {
                     ? sendAction({
                         type: "play_hidden_card",
                         columnIndex,
-                      }).finally(() => setHiddenDrawMode(false))
+                      }).then((success) => {
+                        if (success) {
+                          setHiddenDrawMode(false);
+                        }
+                      })
                     : sendAction({
                         type: activePlayerBlocked ? "discard_column" : "play_column",
                         columnIndex,
