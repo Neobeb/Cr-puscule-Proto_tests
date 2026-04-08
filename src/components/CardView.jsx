@@ -6,10 +6,10 @@ const EFFECT_HINTS = {
   sorciere: "🧭 zone +3",
   vampire: "🩸 face",
   squelette: "🌙 +1 ↺",
-  loup: "🌙x2 adv",
+  loup: "🌙 x2 adv",
   zombie: "🧟 cumul",
   reflet: "↔ meme niv",
-  masque: "🎭 col. cachees",
+  masque: "🎭 colonnes cachees",
   slime: "🟩 libre",
 };
 
@@ -126,15 +126,18 @@ export default function CardView({
 
         <div
           style={{
-            minHeight: 24,
-            fontSize: 10,
-            lineHeight: 1.15,
+            minHeight: 28,
+            fontSize: 9,
+            lineHeight: 1.2,
             opacity: isFaceUp ? 0.82 : 0.95,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             textAlign: "center",
             fontWeight: 700,
+            width: "100%",
+            padding: "0 2px",
+            letterSpacing: 0.1,
           }}
         >
           {effectHint}

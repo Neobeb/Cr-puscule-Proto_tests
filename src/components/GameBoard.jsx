@@ -3,8 +3,10 @@ import Stars from "./Stars";
 
 const COLUMN_WIDTH = 176;
 const COLUMN_CARD_AREA_HEIGHT = 672;
+const STACK_CARD_HEIGHT = 156;
+const STACK_STEP = 38;
 
-function renderColumn(player, columnIndex) {
+function renderColumn(player, columnIndex, anchorToCenter = "bottom") {
   const column = player.columns[columnIndex];
   const moonCount =
     (player.columnMoons?.[columnIndex] || 0) +
@@ -47,21 +49,46 @@ function renderColumn(player, columnIndex) {
 
       <div
         style={{
-          display: "flex",
-          flexDirection: "column-reverse",
-          gap: 8,
           width: "100%",
-          alignItems: "center",
-          justifyContent: "flex-start",
           minHeight: COLUMN_CARD_AREA_HEIGHT,
           maxHeight: COLUMN_CARD_AREA_HEIGHT,
           overflowY: "auto",
           paddingRight: 4,
+          display: "flex",
+          justifyContent: anchorToCenter === "bottom" ? "flex-end" : "flex-start",
         }}
       >
-        {column.map((card) => (
-          <CardView key={card.id} card={card} />
-        ))}
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            height: Math.max(
+              STACK_CARD_HEIGHT,
+              STACK_CARD_HEIGHT + Math.max(0, column.length - 1) * STACK_STEP
+            ),
+          }}
+        >
+          {column.map((card, index) => {
+            const offset = index * STACK_STEP;
+
+            return (
+              <div
+                key={card.id}
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  zIndex: index + 1,
+                  ...(anchorToCenter === "bottom"
+                    ? { bottom: offset }
+                    : { top: offset }),
+                }}
+              >
+                <CardView card={card} />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -88,6 +115,7 @@ function Zone({
   player2Position,
   label,
   effectText,
+  animationState,
 }) {
   const player1ZoneIndex = getZoneIndexFromPosition(player1Position);
   const player2ZoneIndex = getZoneIndexFromPosition(player2Position);
@@ -128,6 +156,8 @@ function Zone({
           const p1Here = player1Position === value;
           const p2Here = player2Position === value;
           const cellEffect = getCellEffect(value);
+          const p1Moved = animationState?.movedPlayers?.includes(0) && p1Here;
+          const p2Moved = animationState?.movedPlayers?.includes(1) && p2Here;
 
           return (
             <div
@@ -150,8 +180,12 @@ function Zone({
                 {cellEffect}
               </div>
               <div style={{ fontSize: 10, color: "#0f172a" }}>
-                {p1Here ? <div>✦ J1</div> : null}
-                {p2Here ? <div>✦ J2</div> : null}
+                {p1Here ? (
+                  <div style={p1Moved ? movingTokenStyle : tokenStyle}>✦ J1</div>
+                ) : null}
+                {p2Here ? (
+                  <div style={p2Moved ? movingTokenStyle : tokenStyle}>✦ J2</div>
+                ) : null}
               </div>
             </div>
           );
@@ -171,9 +205,10 @@ function Zone({
   );
 }
 
-function StarZone({ player1Position, player2Position }) {
+function StarZone({ player1Position, player2Position, animationState }) {
   const p1Here = player1Position === 12;
   const p2Here = player2Position === 12;
+  const animateStar = Boolean(animationState?.starBurst);
 
   return (
     <div
@@ -190,6 +225,7 @@ function StarZone({ player1Position, player2Position }) {
         justifyContent: "space-between",
         alignItems: "center",
         boxShadow: "0 16px 28px rgba(245,158,11,0.18)",
+        animation: animateStar ? "starBurst 900ms ease-out" : "none",
       }}
     >
       <div style={{ fontWeight: 800, fontSize: 12, color: "#92400e" }}>Case 12</div>
@@ -203,7 +239,7 @@ function StarZone({ player1Position, player2Position }) {
   );
 }
 
-function PlayerHeader({ player, active, shorthand = false }) {
+function PlayerHeader({ player, active, shorthand = false, winning = false }) {
   return (
     <div style={{ textAlign: "center", marginBottom: 6 }}>
       {shorthand ? (
@@ -225,6 +261,7 @@ function PlayerHeader({ player, active, shorthand = false }) {
               fontWeight: 900,
               fontSize: 17,
               color: active ? "#2563eb" : "#0f172a",
+              animation: winning ? "victoryGlow 1400ms ease-in-out infinite" : "none",
             }}
           >
             {player.name}
@@ -243,6 +280,7 @@ export default function GameBoard({
   activePlayerBlocked,
   canInteract,
   onColumnClick,
+  animationState,
 }) {
   const zones = [
     { start: 0, end: 2, label: "Zone 1", effectText: "" },
@@ -265,7 +303,11 @@ export default function GameBoard({
           {players[0].columns.map((_, columnIndex) => (
             <div key={`p1-head-${columnIndex}`}>
               {columnIndex === 0 ? (
-                <PlayerHeader player={players[0]} active={currentPlayer === 0} />
+                <PlayerHeader
+                  player={players[0]}
+                  active={currentPlayer === 0}
+                  winning={winner === players[0].name && animationState?.victory}
+                />
               ) : (
                 <div
                   style={{
@@ -296,7 +338,7 @@ export default function GameBoard({
                 cursor: !winner && currentPlayer === 0 && canInteract ? "pointer" : "default",
               }}
             >
-              {renderColumn(players[0], columnIndex)}
+              {renderColumn(players[0], columnIndex, "bottom")}
             </div>
           ))}
 
@@ -319,11 +361,13 @@ export default function GameBoard({
                 effectText={zone.effectText}
                 player1Position={players[0].position}
                 player2Position={players[1].position}
+                animationState={animationState}
               />
             ))}
             <StarZone
               player1Position={players[0].position}
               player2Position={players[1].position}
+              animationState={animationState}
             />
           </div>
 
@@ -339,7 +383,7 @@ export default function GameBoard({
                 cursor: !winner && currentPlayer === 1 && canInteract ? "pointer" : "default",
               }}
             >
-              {renderColumn(players[1], columnIndex)}
+              {renderColumn(players[1], columnIndex, "top")}
             </div>
           ))}
 
@@ -353,6 +397,10 @@ export default function GameBoard({
                       fontWeight: 900,
                       fontSize: 17,
                       color: currentPlayer === 1 ? "#2563eb" : "#0f172a",
+                      animation:
+                        winner === players[1].name && animationState?.victory
+                          ? "victoryGlow 1400ms ease-in-out infinite"
+                          : "none",
                     }}
                   >
                     {players[1].name}
@@ -396,3 +444,19 @@ export default function GameBoard({
     </div>
   );
 }
+
+const tokenStyle = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "1px 4px",
+  borderRadius: 999,
+  background: "rgba(59,130,246,0.12)",
+  fontWeight: 700,
+};
+
+const movingTokenStyle = {
+  ...tokenStyle,
+  animation: "tokenHop 600ms ease-out",
+  background: "rgba(59,130,246,0.2)",
+};
