@@ -6,8 +6,21 @@ const COLUMN_CARD_AREA_MIN_HEIGHT = 170;
 const STACK_CARD_HEIGHT = 148;
 const STACK_STEP = 34;
 
+function getColumnValue(column) {
+  for (let index = column.length - 1; index >= 0; index -= 1) {
+    const card = column[index];
+
+    if (card.faceUp !== false) {
+      return card.value;
+    }
+  }
+
+  return null;
+}
+
 function renderColumn(player, columnIndex, anchorToCenter = "bottom") {
   const column = player.columns[columnIndex];
+  const columnValue = getColumnValue(column);
   const stackHeight = Math.max(
     STACK_CARD_HEIGHT,
     STACK_CARD_HEIGHT + Math.max(0, column.length - 1) * STACK_STEP
@@ -46,7 +59,26 @@ function renderColumn(player, columnIndex, anchorToCenter = "bottom") {
       >
         <div>Col {columnIndex + 1}</div>
         <div style={{ minHeight: 20, fontSize: 16, marginTop: 3 }}>
-          {moonCount > 0 ? "🌙".repeat(moonCount) : ""}
+          {moonCount > 0 ? "L".repeat(moonCount) : ""}
+        </div>
+        <div
+          style={{
+            marginTop: 4,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 4,
+            minWidth: 72,
+            padding: "4px 8px",
+            borderRadius: 999,
+            background: "rgba(37,99,235,0.08)",
+            color: "#1d4ed8",
+            fontSize: 11,
+            fontWeight: 900,
+          }}
+        >
+          <span>Valeur</span>
+          <span>{columnValue ?? "-"}</span>
         </div>
       </div>
 
@@ -177,12 +209,8 @@ function Zone({
                 {cellEffect}
               </div>
               <div style={{ fontSize: 10, color: "#0f172a" }}>
-                {p1Here ? (
-                  <div style={p1Moved ? movingTokenStyle : tokenStyle}>✦ J1</div>
-                ) : null}
-                {p2Here ? (
-                  <div style={p2Moved ? movingTokenStyle : tokenStyle}>✦ J2</div>
-                ) : null}
+                {p1Here ? <div style={p1Moved ? movingTokenStyle : tokenStyle}>J1</div> : null}
+                {p2Here ? <div style={p2Moved ? movingTokenStyle : tokenStyle}>J2</div> : null}
               </div>
             </div>
           );
@@ -226,11 +254,11 @@ function StarZone({ player1Position, player2Position, animationState }) {
       }}
     >
       <div style={{ fontWeight: 800, fontSize: 12, color: "#92400e" }}>Case 12</div>
-      <div style={{ fontSize: 34, lineHeight: 1 }}>⭐</div>
+      <div style={{ fontSize: 34, lineHeight: 1 }}>*</div>
       <div style={{ fontSize: 12, fontWeight: 700, color: "#92400e" }}>Etoile</div>
       <div style={{ fontSize: 10, color: "#78350f" }}>
-        {p1Here ? <div>✦ J1</div> : null}
-        {p2Here ? <div>✦ J2</div> : null}
+        {p1Here ? <div>J1</div> : null}
+        {p2Here ? <div>J2</div> : null}
       </div>
     </div>
   );
