@@ -296,12 +296,11 @@ function getLastVisibleCardEntry(column) {
     return null;
   }
 
-  for (let rowIndex = column.length - 1; rowIndex >= 0; rowIndex -= 1) {
-    const card = column[rowIndex];
+  const rowIndex = column.length - 1;
+  const card = column[rowIndex];
 
-    if (card.faceUp !== false) {
-      return { card, rowIndex };
-    }
+  if (card && card.faceUp !== false) {
+    return { card, rowIndex };
   }
 
   return null;
