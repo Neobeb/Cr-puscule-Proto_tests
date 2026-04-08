@@ -59,7 +59,7 @@ function renderColumn(player, columnIndex, anchorToCenter = "bottom") {
       >
         <div>Col {columnIndex + 1}</div>
         <div style={{ minHeight: 20, fontSize: 16, marginTop: 3 }}>
-          {moonCount > 0 ? "L".repeat(moonCount) : ""}
+          {moonCount > 0 ? "🌙".repeat(moonCount) : ""}
         </div>
         <div
           style={{
@@ -254,7 +254,7 @@ function StarZone({ player1Position, player2Position, animationState }) {
       }}
     >
       <div style={{ fontWeight: 800, fontSize: 12, color: "#92400e" }}>Case 12</div>
-      <div style={{ fontSize: 34, lineHeight: 1 }}>*</div>
+      <div style={{ fontSize: 34, lineHeight: 1 }}>⭐</div>
       <div style={{ fontSize: 12, fontWeight: 700, color: "#92400e" }}>Etoile</div>
       <div style={{ fontSize: 10, color: "#78350f" }}>
         {p1Here ? <div>J1</div> : null}

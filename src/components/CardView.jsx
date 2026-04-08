@@ -63,12 +63,12 @@ export default function CardView({
       >
         {isFaceUp && card.moon ? (
           <span title="Lune" style={badgeStyle}>
-            L
+            🌙
           </span>
         ) : null}
         {isFaceUp && card.chief ? (
           <span title="Chef" style={badgeStyle}>
-            C
+            👑
           </span>
         ) : null}
         {!isFaceUp ? (
