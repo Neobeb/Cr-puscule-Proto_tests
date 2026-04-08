@@ -110,8 +110,8 @@ const CARD_RULES = [
 
 const BOARD_RULES = [
   { name: "Pioche cachee", effect: "A votre tour, vous pouvez jouer la premiere carte du deck face retournee. Son effet joue est toujours +1." },
-  { name: "Case 5", effect: "Vous pouvez retourner une carte deja sur le plateau, chez vous ou chez l'adversaire." },
-  { name: "Case 8", effect: "Vous pouvez retourner une carte deja sur le plateau, chez vous ou chez l'adversaire." },
+  { name: "Case 5", effect: "Vous pouvez retourner la derniere carte visible d'une colonne, chez vous ou chez l'adversaire." },
+  { name: "Case 8", effect: "Vous pouvez retourner la derniere carte visible d'une colonne, chez vous ou chez l'adversaire." },
   { name: "Chefs", effect: "Apres une etoile, les deux pions reviennent a 0 puis avancent du nombre de chefs poses de chaque cote." },
 ];
 
@@ -672,7 +672,7 @@ export default function App() {
             </Panel>
 
             <Panel title="Journal de partie">
-              <GameLog log={game.log} />
+              <GameLog log={game.log} players={game.players} />
             </Panel>
 
             <Panel title="Rappel des pouvoirs">
