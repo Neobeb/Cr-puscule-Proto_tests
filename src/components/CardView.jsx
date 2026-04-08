@@ -61,7 +61,7 @@ export default function CardView({
           justifyContent: "flex-start",
         }}
       >
-        {isFaceUp && card.moon ? (
+        {card.moon ? (
           <span title="Lune" style={badgeStyle}>
             🌙
           </span>

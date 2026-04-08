@@ -28,7 +28,7 @@ function renderColumn(player, columnIndex, anchorToCenter = "bottom") {
   const moonCount =
     (player.columnMoons?.[columnIndex] || 0) +
     column.reduce(
-      (total, card) => total + (card.faceUp !== false && card.moon ? 1 : 0),
+      (total, card) => total + ((card.faceUp === false || card.moon) ? 1 : 0),
       0
     );
 
