@@ -10,6 +10,7 @@ const EFFECT_HINTS = {
   zombie: "🧟 cumul",
   reflet: "↔ meme niv",
   masque: "🎭 colonnes cachees",
+  spectre: "👻 retourne +1",
   slime: "🟩 libre",
 };
 
