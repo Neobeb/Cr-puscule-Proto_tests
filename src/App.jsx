@@ -97,7 +97,7 @@ function Panel({ title, children }) {
 }
 
 const CARD_RULES = [
-  { name: "Recto", effect: "Toute carte jouee face retournee fait seulement +1 case et perd sa valeur tant qu'elle reste retournee." },
+  { name: "Recto", effect: "Toute carte jouee face retournee fait seulement +1 case et n'a aucune valeur tant qu'elle reste retournee." },
   { name: "Sorciere", effect: "Avance de 3 si votre pion est dans la zone de la colonne jouee." },
   { name: "Vampire", effect: "Copie la valeur de la carte du dessus dans la colonne adverse correspondante." },
   { name: "Squelette", effect: "Avance de 1 puis rejoue s'il est pose sur une lune ou sur une carte lune." },
@@ -105,7 +105,7 @@ const CARD_RULES = [
   { name: "Zombie", effect: "Avance selon votre nombre total de zombies. A 5 ou plus, gagne une etoile." },
   { name: "Reflet", effect: "Copie la valeur de la carte au meme niveau a gauche ou a droite. Si les deux existent, choisissez." },
   { name: "Masque", effect: "Avance de 1 par colonne de votre cote contenant au moins une carte retournee." },
-  { name: "Slime", effect: "Ne fait pas avancer, mais peut etre joue dans n'importe quelle colonne." },
+  { name: "Spectre", effect: "Retourne une carte visible puis avance de 1." },
 ];
 
 const BOARD_RULES = [
@@ -582,6 +582,8 @@ export default function App() {
                   {pendingChoice
                     ? pendingChoice.type === "reflet"
                       ? "Choisissez si le Reflet copie la carte de gauche ou de droite."
+                      : pendingChoice.type === "spectre_flip"
+                      ? "Spectre : choisissez une carte visible a retourner."
                       : `Case ${pendingChoice.sourceCase} : choisissez une carte a retourner, ou passez.`
                     : activePlayerBlocked
                     ? "Aucun coup possible : choisissez une colonne a defausser."
@@ -621,10 +623,40 @@ export default function App() {
                 </div>
               ) : null}
 
+              {pendingChoice?.type === "spectre_flip" ? (
+                <div style={choicePanelStyle}>
+                  <div style={{ fontWeight: 800, marginBottom: 10 }}>
+                    Spectre : retourner une carte visible
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {pendingChoice.options.map((option) => (
+                      <button
+                        key={`${option.targetPlayerIndex}-${option.columnIndex}-${option.rowIndex}`}
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          sendAction({
+                            type: "resolve_spectre_flip",
+                            targetPlayerIndex: option.targetPlayerIndex,
+                            columnIndex: option.columnIndex,
+                            rowIndex: option.rowIndex,
+                          });
+                        }}
+                        style={choiceButtonStyle}
+                      >
+                        {option.targetPlayerName} col {option.columnIndex + 1} :{" "}
+                        {option.cardLabel} {option.cardValue}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               {pendingChoice?.type === "board_flip" ? (
                 <div style={choicePanelStyle}>
                   <div style={{ fontWeight: 800, marginBottom: 10 }}>
-                    Case {pendingChoice.sourceCase} : retourner une carte
+                    {pendingChoice.label || `Case ${pendingChoice.sourceCase}`} : retourner une carte
                   </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
                     {pendingChoice.options.map((option) => (
