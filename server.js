@@ -286,6 +286,22 @@ function getTopCard(column) {
   return column[column.length - 1];
 }
 
+function getLastVisibleCardEntry(column) {
+  if (!column || !column.length) {
+    return null;
+  }
+
+  for (let rowIndex = column.length - 1; rowIndex >= 0; rowIndex -= 1) {
+    const card = column[rowIndex];
+
+    if (card.faceUp !== false) {
+      return { card, rowIndex };
+    }
+  }
+
+  return null;
+}
+
 function getZoneIndexFromPosition(position) {
   if (position <= 2) return 0;
   if (position <= 5) return 1;
@@ -386,15 +402,19 @@ function createFlipOptions(game) {
 
   game.players.forEach((player, playerIndex) => {
     player.columns.forEach((column, columnIndex) => {
-      column.forEach((card, rowIndex) => {
-        options.push({
-          targetPlayerIndex: playerIndex,
-          columnIndex,
-          rowIndex,
-          cardType: card.faceUp !== false ? card.type : null,
-          cardValue: getCardEffectiveValue(card),
-          faceUp: card.faceUp !== false,
-        });
+      const visibleEntry = getLastVisibleCardEntry(column);
+
+      if (!visibleEntry) {
+        return;
+      }
+
+      options.push({
+        targetPlayerIndex: playerIndex,
+        columnIndex,
+        rowIndex: visibleEntry.rowIndex,
+        cardType: visibleEntry.card.type,
+        cardValue: getCardEffectiveValue(visibleEntry.card),
+        faceUp: true,
       });
     });
   });
