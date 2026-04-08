@@ -3,15 +3,15 @@ import { CREATURES } from "../data/creatures";
 const CARD_WIDTH = 112;
 const CARD_HEIGHT = 148;
 const EFFECT_HINTS = {
-  sorciere: "🧭 zone +3",
-  vampire: "🩸 face",
-  squelette: "🌙 +1 ↺",
-  loup: "🌙 x2 adv",
-  zombie: "🧟 cumul",
-  reflet: "↔ meme niv",
-  masque: "🎭 colonnes cachees",
-  spectre: "👻 retourne +1",
-  slime: "🟩 libre",
+  sorciere: "zone +3",
+  vampire: "copie face",
+  squelette: "lune +1",
+  loup: "lunes x2",
+  zombie: "zombies cumul",
+  reflet: "meme niveau",
+  masque: "colonnes cachees",
+  spectre: "retourne +1",
+  slime: "libre",
 };
 
 export default function CardView({
@@ -25,8 +25,8 @@ export default function CardView({
     ? creature?.color || "white"
     : "linear-gradient(180deg, #0f172a 0%, #1e293b 100%)";
   const textColor = isFaceUp ? "#0f172a" : "#f8fafc";
-  const displayedValue = isFaceUp ? card.value : 0;
-  const effectHint = isFaceUp ? EFFECT_HINTS[card.type] || "" : "🂠 recto +1";
+  const displayedValue = isFaceUp ? card.value : "-";
+  const effectHint = isFaceUp ? EFFECT_HINTS[card.type] || "" : "cachee +1";
 
   return (
     <div
@@ -63,16 +63,16 @@ export default function CardView({
       >
         {isFaceUp && card.moon ? (
           <span title="Lune" style={badgeStyle}>
-            🌙
+            L
           </span>
         ) : null}
         {isFaceUp && card.chief ? (
           <span title="Chef" style={badgeStyle}>
-            👑
+            C
           </span>
         ) : null}
         {!isFaceUp ? (
-          <span title="Recto" style={badgeStyle}>
+          <span title="Carte cachee" style={badgeStyle}>
             +1
           </span>
         ) : null}
@@ -96,7 +96,7 @@ export default function CardView({
 
       <div style={{ paddingTop: 8 }}>
         <div style={{ fontSize: 30, lineHeight: 1, marginBottom: 8 }}>
-          {isFaceUp ? creature?.icon || "?" : "🂠"}
+          {isFaceUp ? creature?.icon || "?" : "?"}
         </div>
         <div
           style={{
@@ -110,7 +110,7 @@ export default function CardView({
             textAlign: "center",
           }}
         >
-          {isFaceUp ? creature?.label || card.type : "Carte retournee"}
+          {isFaceUp ? creature?.label || card.type : "Carte cachee"}
         </div>
       </div>
 
