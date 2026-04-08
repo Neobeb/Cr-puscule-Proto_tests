@@ -14,6 +14,7 @@ const TYPE_LABELS = {
   zombie: "Zombie",
   reflet: "Reflet",
   masque: "Masque",
+  spectre: "Spectre",
   slime: "Slime",
 };
 
@@ -67,12 +68,12 @@ const cards = [
     moon: false,
     chief: false,
   })),
-  ...[3, 3, 3, 3, 4, 4, 4].map((value, index) => ({
-    id: `slime-${value}-${index}`,
-    type: "slime",
+  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
+    id: `spectre-${value}`,
+    type: "spectre",
     value,
     moon: false,
-    chief: value === 4,
+    chief: false,
   })),
 ];
 
@@ -192,10 +193,6 @@ function getTopValue(column) {
 }
 
 function canPlaceCardInColumn(card, column) {
-  if (card.type === "slime") {
-    return true;
-  }
-
   return card.value >= getTopValue(column);
 }
 
@@ -515,7 +512,11 @@ function resolveBoardFlipChoice(game, action) {
     throw new Error("Carte introuvable.");
   }
 
-  targetCard.faceUp = !(targetCard.faceUp !== false);
+  if (targetCard.faceUp === false) {
+    throw new Error("Une carte retournee ne peut pas etre remise sur son recto.");
+  }
+
+  targetCard.faceUp = false;
 
   if (pendingChoice.sourceCase === 5) {
     ensureStats(game).case5.used += 1;
@@ -523,6 +524,45 @@ function resolveBoardFlipChoice(game, action) {
 
   game.log.unshift(
     `${game.players[pendingChoice.playerIndex].name} retourne la carte de rang ${action.rowIndex + 1} dans la colonne ${action.columnIndex + 1} de ${game.players[action.targetPlayerIndex].name}.`
+  );
+  game.pendingChoice = null;
+}
+
+function resolveSpectreFlipChoice(game, action) {
+  const pendingChoice = game.pendingChoice;
+
+  if (!pendingChoice || pendingChoice.type !== "spectre_flip") {
+    throw new Error("Aucun choix Spectre en attente.");
+  }
+
+  const option = pendingChoice.options.find(
+    (entry) =>
+      entry.targetPlayerIndex === action.targetPlayerIndex &&
+      entry.columnIndex === action.columnIndex &&
+      entry.rowIndex === action.rowIndex
+  );
+
+  if (!option) {
+    throw new Error("Cible de retournement invalide.");
+  }
+
+  const targetCard =
+    game.players[action.targetPlayerIndex].columns[action.columnIndex]?.[action.rowIndex];
+
+  if (!targetCard) {
+    throw new Error("Carte introuvable.");
+  }
+
+  if (targetCard.faceUp === false) {
+    throw new Error("Une carte retournee ne peut pas etre remise sur son recto.");
+  }
+
+  targetCard.faceUp = false;
+  movePlayer(game, pendingChoice.playerIndex, 1);
+  recordCardActivation(game, "spectre");
+  recordCardMovement(game, "spectre", 1);
+  game.log.unshift(
+    `${game.players[pendingChoice.playerIndex].name} active Spectre ${pendingChoice.cardValue} : retourne la colonne ${action.columnIndex + 1} de ${game.players[action.targetPlayerIndex].name} puis +1`
   );
   game.pendingChoice = null;
 }
@@ -671,6 +711,32 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       );
       return;
     }
+    case "spectre": {
+      const flipOptions = createFlipOptions(game);
+
+      if (!flipOptions.length) {
+        recordCardActivation(game, "spectre");
+        movePlayer(game, playerIndex, 1);
+        recordCardMovement(game, "spectre", 1);
+        game.log.unshift(
+          `${game.players[playerIndex].name} active Spectre ${card.value} : aucune carte visible a retourner -> +1`
+        );
+        return;
+      }
+
+      game.pendingChoice = {
+        type: "spectre_flip",
+        playerIndex,
+        optional: false,
+        label: "Spectre",
+        cardValue: card.value,
+        options: flipOptions,
+      };
+      game.log.unshift(
+        `${game.players[playerIndex].name} doit choisir une carte visible a retourner pour son Spectre ${card.value}.`
+      );
+      return;
+    }
     default:
       game.log.unshift(
         `${game.players[playerIndex].name} joue ${card.type} ${card.value} : effet introuvable`
@@ -808,6 +874,25 @@ function sanitizeGame(game, playerId) {
         type: game.pendingChoice.type,
         optional: true,
         sourceCase: game.pendingChoice.sourceCase,
+        label: game.pendingChoice.label || `Case ${game.pendingChoice.sourceCase}`,
+        options: game.pendingChoice.options.map((option) => ({
+          targetPlayerIndex: option.targetPlayerIndex,
+          targetPlayerName: game.players[option.targetPlayerIndex].name,
+          columnIndex: option.columnIndex,
+          rowIndex: option.rowIndex,
+          cardValue: option.cardValue,
+          cardType: option.cardType,
+          cardFaceUp: option.faceUp,
+          cardLabel: option.faceUp ? getTypeLabel(option.cardType) : "Carte retournee",
+        })),
+      };
+    }
+
+    if (game.pendingChoice.type === "spectre_flip") {
+      pendingChoice = {
+        type: game.pendingChoice.type,
+        optional: false,
+        label: "Spectre",
         options: game.pendingChoice.options.map((option) => ({
           targetPlayerIndex: option.targetPlayerIndex,
           targetPlayerName: game.players[option.targetPlayerIndex].name,
@@ -951,6 +1036,27 @@ function expandPendingChoicesForOutcome(state, playerId, actions) {
     });
 
     return [...discardOutcomes, ...targetedOutcomes];
+  }
+
+  if (state.pendingChoice.type === "spectre_flip") {
+    return state.pendingChoice.options.flatMap((option) => {
+      const nextState = clone(state);
+      performAction(nextState, playerId, {
+        type: "resolve_spectre_flip",
+        targetPlayerIndex: option.targetPlayerIndex,
+        columnIndex: option.columnIndex,
+        rowIndex: option.rowIndex,
+      });
+      return expandPendingChoicesForOutcome(nextState, playerId, [
+        ...actions,
+        {
+          type: "resolve_spectre_flip",
+          targetPlayerIndex: option.targetPlayerIndex,
+          columnIndex: option.columnIndex,
+          rowIndex: option.rowIndex,
+        },
+      ]);
+    });
   }
 
   return [{ actions, resultingState: state }];
@@ -1111,6 +1217,26 @@ function chooseBotPendingChoice(game, botIndex) {
     return {
       actions: [{ type: "resolve_board_flip", skip: true }],
       score: 0,
+    };
+  }
+
+  if (pendingChoice.type === "spectre_flip") {
+    const visibleOpponentOptions = pendingChoice.options
+      .filter((option) => option.targetPlayerIndex !== botIndex && option.cardValue > 0)
+      .sort((a, b) => b.cardValue - a.cardValue);
+
+    const target = visibleOpponentOptions[0] || pendingChoice.options[0];
+
+    return {
+      actions: [
+        {
+          type: "resolve_spectre_flip",
+          targetPlayerIndex: target.targetPlayerIndex,
+          columnIndex: target.columnIndex,
+          rowIndex: target.rowIndex,
+        },
+      ],
+      score: (target?.cardValue || 0) + 1,
     };
   }
 
@@ -1378,6 +1504,24 @@ function performAction(game, playerId, action) {
       ...(pendingPlay || {}),
       boardFlipResolvedCase: sourceCase,
     };
+    finalizeTurnAfterResolvedPlay(
+      game,
+      playerIndex,
+      pendingPlay?.wasLeftmostCard,
+      pendingPlay?.previousPosition,
+      pendingPlay?.shouldRefillRow
+    );
+    game.pendingPlay = null;
+    return;
+  }
+
+  if (action.type === "resolve_spectre_flip") {
+    if (!game.pendingChoice || game.pendingChoice.playerIndex !== playerIndex) {
+      throw new Error("Aucun choix Spectre en attente.");
+    }
+
+    const pendingPlay = game.pendingPlay;
+    resolveSpectreFlipChoice(game, action);
     finalizeTurnAfterResolvedPlay(
       game,
       playerIndex,
