@@ -13,9 +13,8 @@ const TYPE_LABELS = {
   loup: "Loup",
   zombie: "Zombie",
   reflet: "Reflet",
-  masque: "Masque",
+  banshee: "Banshee",
   spectre: "Spectre",
-  slime: "Slime",
 };
 
 const cards = [
@@ -26,12 +25,12 @@ const cards = [
     moon: value === 1,
     chief: value === 6,
   })),
-  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
-    id: `vampire-${value}`,
+  ...[4, 4, 5, 5, 5, 6, 6].map((value, index) => ({
+    id: `vampire-${index}`,
     type: "vampire",
     value,
     moon: value === 4,
-    chief: value === 0 || value === 1,
+    chief: false,
   })),
   ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
     id: `squelette-${value}`,
@@ -52,7 +51,7 @@ const cards = [
     type: "zombie",
     value,
     moon: false,
-    chief: value === 4,
+    chief: true,
   })),
   ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
     id: `reflet-${value}`,
@@ -62,8 +61,8 @@ const cards = [
     chief: value === 5 || value === 6,
   })),
   ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
-    id: `masque-${value}`,
-    type: "masque",
+    id: `banshee-${value}`,
+    type: "banshee",
     value,
     moon: false,
     chief: false,
@@ -133,6 +132,7 @@ function createEmptyStats() {
     case8ZombieBoosts: 0,
     cardActivations: {},
     cardMovementTotal: {},
+    replaysGranted: {},
     winners: [],
   };
 }
@@ -153,6 +153,11 @@ function recordCardActivation(game, type) {
 function recordCardMovement(game, type, amount) {
   const stats = ensureStats(game);
   stats.cardMovementTotal[type] = (stats.cardMovementTotal[type] || 0) + amount;
+}
+
+function recordReplayGranted(game, type, amount = 1) {
+  const stats = ensureStats(game);
+  stats.replaysGranted[type] = (stats.replaysGranted[type] || 0) + amount;
 }
 
 function createDeck() {
@@ -472,6 +477,27 @@ function createFlipOptions(game) {
   return options;
 }
 
+function createDiscardColumnOptions(game) {
+  const options = [];
+
+  game.players.forEach((player, playerIndex) => {
+    player.columns.forEach((column, columnIndex) => {
+      if (!column.length) {
+        return;
+      }
+
+      options.push({
+        targetPlayerIndex: playerIndex,
+        columnIndex,
+        moonCount: countMoonsInColumn(column, player.columnMoons?.[columnIndex] || 0),
+        columnSize: column.length,
+      });
+    });
+  });
+
+  return options;
+}
+
 function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = {}) {
   const player = game.players[playerIndex];
   const skippedCase = options.skipBoardCase ?? null;
@@ -620,6 +646,40 @@ function resolveSpectreFlipChoice(game, action) {
   game.pendingChoice = null;
 }
 
+function resolveBansheeDiscardChoice(game, action) {
+  const pendingChoice = game.pendingChoice;
+
+  if (!pendingChoice || pendingChoice.type !== "banshee_discard") {
+    throw new Error("Aucun choix Banshee en attente.");
+  }
+
+  const option = pendingChoice.options.find(
+    (entry) =>
+      entry.targetPlayerIndex === action.targetPlayerIndex &&
+      entry.columnIndex === action.columnIndex
+  );
+
+  if (!option) {
+    throw new Error("Cible de defausse invalide.");
+  }
+
+  const targetPlayer = game.players[action.targetPlayerIndex];
+  const targetColumn = targetPlayer.columns[action.columnIndex];
+
+  if (!targetColumn || !targetColumn.length) {
+    throw new Error("Colonne introuvable.");
+  }
+
+  targetPlayer.columns[action.columnIndex] = [];
+  movePlayer(game, pendingChoice.playerIndex, option.moonCount);
+  recordCardActivation(game, "banshee");
+  recordCardMovement(game, "banshee", option.moonCount);
+  game.log.unshift(
+    `${game.players[pendingChoice.playerIndex].name} active Banshee ${pendingChoice.cardValue} : defausse la colonne ${action.columnIndex + 1} de ${targetPlayer.name} puis +${option.moonCount}`
+  );
+  game.pendingChoice = null;
+}
+
 function applyCardEffect(game, playerIndex, card, columnIndex) {
   if (card.faceUp === false) {
     movePlayer(game, playerIndex, 1);
@@ -650,6 +710,9 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       );
 
       game.extraTurn = shouldReplay;
+      if (shouldReplay) {
+        recordReplayGranted(game, "squelette");
+      }
       game.log.unshift(
         shouldReplay
           ? `${game.players[playerIndex].name} active Squelette ${card.value} : +1 et rejoue grace a une lune sous la carte ou sur la case`
@@ -754,13 +817,27 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       );
       return;
     }
-    case "masque": {
-      recordCardActivation(game, "masque");
-      const move = countColumnsWithFaceDownCards(game, playerIndex);
-      movePlayer(game, playerIndex, move);
-      recordCardMovement(game, "masque", move);
+    case "banshee": {
+      const discardOptions = createDiscardColumnOptions(game);
+
+      if (!discardOptions.length) {
+        recordCardActivation(game, "banshee");
+        game.log.unshift(
+          `${game.players[playerIndex].name} active Banshee ${card.value} : aucune colonne a defausser`
+        );
+        return;
+      }
+
+      game.pendingChoice = {
+        type: "banshee_discard",
+        playerIndex,
+        optional: false,
+        label: "Banshee",
+        cardValue: card.value,
+        options: discardOptions,
+      };
       game.log.unshift(
-        `${game.players[playerIndex].name} active Masque ${card.value} : ${move} colonne(s) avec au moins une carte retournee -> +${move}`
+        `${game.players[playerIndex].name} doit choisir une colonne a defausser pour sa Banshee ${card.value}.`
       );
       return;
     }
@@ -958,6 +1035,21 @@ function sanitizeGame(game, playerId) {
         })),
       };
     }
+
+    if (game.pendingChoice.type === "banshee_discard") {
+      pendingChoice = {
+        type: game.pendingChoice.type,
+        optional: false,
+        label: "Banshee",
+        options: game.pendingChoice.options.map((option) => ({
+          targetPlayerIndex: option.targetPlayerIndex,
+          targetPlayerName: game.players[option.targetPlayerIndex].name,
+          columnIndex: option.columnIndex,
+          moonCount: option.moonCount,
+          columnSize: option.columnSize,
+        })),
+      };
+    }
   }
 
   const visiblePlayers = game.players.map((player) => ({
@@ -1133,6 +1225,25 @@ function expandPendingChoicesForOutcome(state, playerId, actions) {
     });
   }
 
+  if (state.pendingChoice.type === "banshee_discard") {
+    return state.pendingChoice.options.flatMap((option) => {
+      const nextState = clone(state);
+      performAction(nextState, playerId, {
+        type: "resolve_banshee_discard",
+        targetPlayerIndex: option.targetPlayerIndex,
+        columnIndex: option.columnIndex,
+      });
+      return expandPendingChoicesForOutcome(nextState, playerId, [
+        ...actions,
+        {
+          type: "resolve_banshee_discard",
+          targetPlayerIndex: option.targetPlayerIndex,
+          columnIndex: option.columnIndex,
+        },
+      ]);
+    });
+  }
+
   return [{ actions, resultingState: state }];
 }
 
@@ -1150,6 +1261,9 @@ function getLegalTurnOutcomes(game, playerIndex) {
 
   if (blocked) {
     for (let columnIndex = 0; columnIndex < player.columns.length; columnIndex += 1) {
+      if (!player.columns[columnIndex]?.length) {
+        continue;
+      }
       const nextState = clone(game);
       performAction(nextState, playerId, {
         type: "discard_column",
@@ -1212,10 +1326,39 @@ function getBotProgressScore(game, botIndex) {
   return bot.stars * 100 + bot.position;
 }
 
+function evaluateImmediateOpponentResponse(game, botIndex) {
+  if (game.winner || game.currentPlayer === botIndex) {
+    return evaluateGameForBot(game, botIndex);
+  }
+
+  const opponentOutcomes = getLegalTurnOutcomes(game, game.currentPlayer);
+
+  if (!opponentOutcomes.length) {
+    return evaluateGameForBot(game, botIndex);
+  }
+
+  let worstScoreForBot = Infinity;
+
+  for (const outcome of opponentOutcomes) {
+    const score = evaluateGameForBot(outcome.resultingState, botIndex);
+    worstScoreForBot = Math.min(worstScoreForBot, score);
+  }
+
+  return worstScoreForBot;
+}
+
 function scoreOutcomeForBot(outcome, botIndex, difficulty) {
-  return difficulty <= 0
-    ? evaluateGameForBot(outcome.resultingState, botIndex)
-    : searchBestScore(outcome.resultingState, difficulty - 1, botIndex);
+  if (difficulty <= 0) {
+    const immediateScore = evaluateGameForBot(outcome.resultingState, botIndex);
+    const opponentResponseScore = evaluateImmediateOpponentResponse(
+      outcome.resultingState,
+      botIndex
+    );
+
+    return immediateScore * 0.65 + opponentResponseScore * 0.35;
+  }
+
+  return searchBestScore(outcome.resultingState, difficulty - 1, botIndex);
 }
 
 function chooseBestOutcomeFromList(outcomes, botIndex, difficulty) {
@@ -1307,6 +1450,31 @@ function chooseBotPendingChoice(game, botIndex) {
         },
       ],
       score: (target?.cardValue || 0) + 1,
+    };
+  }
+
+  if (pendingChoice.type === "banshee_discard") {
+    const target = [...pendingChoice.options].sort((a, b) => {
+      const scoreA =
+        a.moonCount * 10 +
+        a.columnSize * 2 +
+        (a.targetPlayerIndex !== botIndex ? 5 : 0);
+      const scoreB =
+        b.moonCount * 10 +
+        b.columnSize * 2 +
+        (b.targetPlayerIndex !== botIndex ? 5 : 0);
+      return scoreB - scoreA;
+    })[0];
+
+    return {
+      actions: [
+        {
+          type: "resolve_banshee_discard",
+          targetPlayerIndex: target.targetPlayerIndex,
+          columnIndex: target.columnIndex,
+        },
+      ],
+      score: target.moonCount * 10 + target.columnSize,
     };
   }
 
@@ -1614,6 +1782,24 @@ function performAction(game, playerId, action) {
 
     const pendingPlay = game.pendingPlay;
     resolveSpectreFlipChoice(game, action);
+    finalizeTurnAfterResolvedPlay(
+      game,
+      playerIndex,
+      pendingPlay?.wasLeftmostCard,
+      pendingPlay?.previousPosition,
+      pendingPlay?.shouldRefillRow
+    );
+    game.pendingPlay = null;
+    return;
+  }
+
+  if (action.type === "resolve_banshee_discard") {
+    if (!game.pendingChoice || game.pendingChoice.playerIndex !== playerIndex) {
+      throw new Error("Aucun choix Banshee en attente.");
+    }
+
+    const pendingPlay = game.pendingPlay;
+    resolveBansheeDiscardChoice(game, action);
     finalizeTurnAfterResolvedPlay(
       game,
       playerIndex,
