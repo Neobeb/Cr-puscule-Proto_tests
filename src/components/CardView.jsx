@@ -10,7 +10,6 @@ const EFFECT_HINTS = {
   zombie: "zombies cumul",
   reflet: "meme niveau",
   banshee: "defausse lune",
-  spectre: "retourne +1",
 };
 
 export default function CardView({
