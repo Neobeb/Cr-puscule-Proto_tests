@@ -120,7 +120,6 @@ export default function App() {
   const [game, setGame] = useState(null);
   const [createName, setCreateName] = useState("");
   const [createMode, setCreateMode] = useState("online");
-  const [botDifficulty, setBotDifficulty] = useState("0");
   const [joinName, setJoinName] = useState("");
   const [joinCode, setJoinCode] = useState(initialSession.gameId || "");
   const [error, setError] = useState("");
@@ -200,7 +199,6 @@ export default function App() {
         body: JSON.stringify({
           playerName: createName,
           mode: createMode,
-          botDifficulty: Number(botDifficulty),
         }),
       });
 
@@ -211,7 +209,7 @@ export default function App() {
       writeSessionToUrl(nextSession.gameId, nextSession.playerId);
       setInfo(
         createMode === "bot"
-          ? `Partie creee contre IA niveau ${botDifficulty}.`
+          ? "Partie creee contre IA."
           : "Partie creee. Envoyez le lien d'invitation a votre testeur."
       );
     } catch (apiError) {
@@ -461,18 +459,6 @@ export default function App() {
                 <option value="online">Partie en ligne a 2 joueurs</option>
                 <option value="bot">Partie contre IA</option>
               </select>
-              {createMode === "bot" ? (
-                <select
-                  value={botDifficulty}
-                  onChange={(event) => setBotDifficulty(event.target.value)}
-                  style={inputStyle}
-                >
-                  <option value="0">IA niveau 0</option>
-                  <option value="1">IA niveau 1</option>
-                  <option value="2">IA niveau 2</option>
-                  <option value="3">IA niveau 3</option>
-                </select>
-              ) : null}
               <button onClick={createGame} disabled={busy} style={primaryButtonStyle}>
                 {createMode === "bot" ? "Creer une partie contre IA" : "Creer la partie"}
               </button>
