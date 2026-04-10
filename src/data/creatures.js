@@ -29,19 +29,14 @@ export const CREATURES = {
     color: "#fde68a",
     icon: "🪞",
   },
-  masque: {
-    label: "Masque",
+  banshee: {
+    label: "Banshee",
     color: "#c4b5fd",
-    icon: "🎭",
+    icon: "🕯️",
   },
   spectre: {
     label: "Spectre",
     color: "#bfdbfe",
     icon: "👻",
-  },
-  slime: {
-    label: "Slime",
-    color: "#86efac",
-    icon: "🟩",
   },
 };

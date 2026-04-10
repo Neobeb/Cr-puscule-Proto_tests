@@ -6,12 +6,12 @@ export const cards = [
     moon: value === 1,
     chief: value === 6,
   })),
-  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
-    id: `vampire-${value}`,
+  ...[4, 4, 5, 5, 5, 6, 6].map((value, index) => ({
+    id: `vampire-${index}`,
     type: "vampire",
     value,
     moon: value === 4,
-    chief: value === 0 || value === 1,
+    chief: false,
   })),
   ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
     id: `squelette-${value}`,
@@ -32,7 +32,7 @@ export const cards = [
     type: "zombie",
     value,
     moon: false,
-    chief: value === 4,
+    chief: true,
   })),
   ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
     id: `reflet-${value}`,
@@ -42,8 +42,8 @@ export const cards = [
     chief: value === 5 || value === 6,
   })),
   ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
-    id: `masque-${value}`,
-    type: "masque",
+    id: `banshee-${value}`,
+    type: "banshee",
     value,
     moon: false,
     chief: false,
