@@ -569,8 +569,6 @@ export default function App() {
                       ? "Choisissez si le Reflet copie la carte de gauche ou de droite."
                       : pendingChoice.type === "banshee_discard"
                       ? "Banshee : choisissez une colonne a defausser."
-                      : pendingChoice.type === "spectre_flip"
-                      ? "Spectre : choisissez une carte visible a retourner."
                       : `Case ${pendingChoice.sourceCase} : choisissez une carte a retourner, ou passez.`
                     : activePlayerBlocked
                     ? "Aucun coup possible : choisissez une colonne a defausser."
@@ -603,36 +601,6 @@ export default function App() {
                         style={choiceButtonStyle}
                       >
                         {option.direction === "left" ? "Gauche" : "Droite"} :{" "}
-                        {option.cardLabel} {option.cardValue}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {pendingChoice?.type === "spectre_flip" ? (
-                <div style={choicePanelStyle}>
-                  <div style={{ fontWeight: 800, marginBottom: 10 }}>
-                    Spectre : retourner une carte visible
-                  </div>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {pendingChoice.options.map((option) => (
-                      <button
-                        key={`${option.targetPlayerIndex}-${option.columnIndex}-${option.rowIndex}`}
-                        type="button"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          sendAction({
-                            type: "resolve_spectre_flip",
-                            targetPlayerIndex: option.targetPlayerIndex,
-                            columnIndex: option.columnIndex,
-                            rowIndex: option.rowIndex,
-                          });
-                        }}
-                        style={choiceButtonStyle}
-                      >
-                        {option.targetPlayerName} col {option.columnIndex + 1} :{" "}
                         {option.cardLabel} {option.cardValue}
                       </button>
                     ))}
