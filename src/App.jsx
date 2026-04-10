@@ -104,8 +104,7 @@ const CARD_RULES = [
   { name: "Loup", effect: "Avance de 2 par lune presente dans la colonne adverse correspondante." },
   { name: "Zombie", effect: "Avance selon votre nombre total de zombies. Tous les zombies sont des chefs. A 5 ou plus, gagne une etoile." },
   { name: "Reflet", effect: "Copie la valeur de la carte au meme niveau a gauche ou a droite. Si les deux existent, choisissez." },
-  { name: "Banshee", effect: "Defausse une colonne, puis avance du nombre de lunes dans cette colonne." },
-  { name: "Spectre", effect: "Retourne une carte visible puis avance de 1." },
+  { name: "Banshee", effect: "Defausse une de vos colonnes, puis avance du nombre de lunes dans cette colonne." },
 ];
 
 const BOARD_RULES = [
