@@ -477,21 +477,21 @@ function createFlipOptions(game) {
   return options;
 }
 
-function createDiscardColumnOptions(game) {
+function createDiscardColumnOptions(game, ownerPlayerIndex) {
   const options = [];
 
-  game.players.forEach((player, playerIndex) => {
-    player.columns.forEach((column, columnIndex) => {
-      if (!column.length) {
-        return;
-      }
+  const player = game.players[ownerPlayerIndex];
 
-      options.push({
-        targetPlayerIndex: playerIndex,
-        columnIndex,
-        moonCount: countMoonsInColumn(column, player.columnMoons?.[columnIndex] || 0),
-        columnSize: column.length,
-      });
+  player.columns.forEach((column, columnIndex) => {
+    if (!column.length) {
+      return;
+    }
+
+    options.push({
+      targetPlayerIndex: ownerPlayerIndex,
+      columnIndex,
+      moonCount: countMoonsInColumn(column, player.columnMoons?.[columnIndex] || 0),
+      columnSize: column.length,
     });
   });
 
@@ -703,7 +703,6 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       const playerColumn = game.players[playerIndex].columns[columnIndex];
       const cardBelow = playerColumn[playerColumn.length - 2] || null;
       const hasMoonOnBoardCase =
-        playerColumn.length === 1 &&
         (game.players[playerIndex].columnMoons?.[columnIndex] || 0) > 0;
       const shouldReplay = Boolean(
         (cardBelow && (cardBelow.faceUp === false || cardBelow.moon)) || hasMoonOnBoardCase
@@ -818,7 +817,7 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       return;
     }
     case "banshee": {
-      const discardOptions = createDiscardColumnOptions(game);
+      const discardOptions = createDiscardColumnOptions(game, playerIndex);
 
       if (!discardOptions.length) {
         recordCardActivation(game, "banshee");
