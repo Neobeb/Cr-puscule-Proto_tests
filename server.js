@@ -14,7 +14,6 @@ const TYPE_LABELS = {
   zombie: "Zombie",
   reflet: "Reflet",
   banshee: "Banshee",
-  spectre: "Spectre",
 };
 
 const cards = [
@@ -63,13 +62,6 @@ const cards = [
   ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
     id: `banshee-${value}`,
     type: "banshee",
-    value,
-    moon: false,
-    chief: false,
-  })),
-  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
-    id: `spectre-${value}`,
-    type: "spectre",
     value,
     moon: false,
     chief: false,
@@ -607,45 +599,6 @@ function resolveBoardFlipChoice(game, action) {
   game.pendingChoice = null;
 }
 
-function resolveSpectreFlipChoice(game, action) {
-  const pendingChoice = game.pendingChoice;
-
-  if (!pendingChoice || pendingChoice.type !== "spectre_flip") {
-    throw new Error("Aucun choix Spectre en attente.");
-  }
-
-  const option = pendingChoice.options.find(
-    (entry) =>
-      entry.targetPlayerIndex === action.targetPlayerIndex &&
-      entry.columnIndex === action.columnIndex &&
-      entry.rowIndex === action.rowIndex
-  );
-
-  if (!option) {
-    throw new Error("Cible de retournement invalide.");
-  }
-
-  const targetCard =
-    game.players[action.targetPlayerIndex].columns[action.columnIndex]?.[action.rowIndex];
-
-  if (!targetCard) {
-    throw new Error("Carte introuvable.");
-  }
-
-  if (targetCard.faceUp === false) {
-    throw new Error("Une carte retournee ne peut pas etre remise sur son recto.");
-  }
-
-  targetCard.faceUp = false;
-  movePlayer(game, pendingChoice.playerIndex, 1);
-  recordCardActivation(game, "spectre");
-  recordCardMovement(game, "spectre", 1);
-  game.log.unshift(
-    `${game.players[pendingChoice.playerIndex].name} active Spectre ${pendingChoice.cardValue} : retourne la colonne ${action.columnIndex + 1} de ${game.players[action.targetPlayerIndex].name} puis +1`
-  );
-  game.pendingChoice = null;
-}
-
 function resolveBansheeDiscardChoice(game, action) {
   const pendingChoice = game.pendingChoice;
 
@@ -840,32 +793,6 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       );
       return;
     }
-    case "spectre": {
-      const flipOptions = createFlipOptions(game);
-
-      if (!flipOptions.length) {
-        recordCardActivation(game, "spectre");
-        movePlayer(game, playerIndex, 1);
-        recordCardMovement(game, "spectre", 1);
-        game.log.unshift(
-          `${game.players[playerIndex].name} active Spectre ${card.value} : aucune carte visible a retourner -> +1`
-        );
-        return;
-      }
-
-      game.pendingChoice = {
-        type: "spectre_flip",
-        playerIndex,
-        optional: false,
-        label: "Spectre",
-        cardValue: card.value,
-        options: flipOptions,
-      };
-      game.log.unshift(
-        `${game.players[playerIndex].name} doit choisir une carte visible a retourner pour son Spectre ${card.value}.`
-      );
-      return;
-    }
     default:
       game.log.unshift(
         `${game.players[playerIndex].name} joue ${card.type} ${card.value} : effet introuvable`
@@ -1004,24 +931,6 @@ function sanitizeGame(game, playerId) {
         optional: true,
         sourceCase: game.pendingChoice.sourceCase,
         label: game.pendingChoice.label || `Case ${game.pendingChoice.sourceCase}`,
-        options: game.pendingChoice.options.map((option) => ({
-          targetPlayerIndex: option.targetPlayerIndex,
-          targetPlayerName: game.players[option.targetPlayerIndex].name,
-          columnIndex: option.columnIndex,
-          rowIndex: option.rowIndex,
-          cardValue: option.cardValue,
-          cardType: option.cardType,
-          cardFaceUp: option.faceUp,
-          cardLabel: option.faceUp ? getTypeLabel(option.cardType) : "Carte retournee",
-        })),
-      };
-    }
-
-    if (game.pendingChoice.type === "spectre_flip") {
-      pendingChoice = {
-        type: game.pendingChoice.type,
-        optional: false,
-        label: "Spectre",
         options: game.pendingChoice.options.map((option) => ({
           targetPlayerIndex: option.targetPlayerIndex,
           targetPlayerName: game.players[option.targetPlayerIndex].name,
@@ -1191,37 +1100,6 @@ function expandPendingChoicesForOutcome(state, playerId, actions) {
     });
 
     return [...discardOutcomes, ...targetedOutcomes];
-  }
-
-  if (state.pendingChoice.type === "spectre_flip") {
-    return state.pendingChoice.options.flatMap((option) => {
-      const nextState = clone(state);
-      try {
-        performAction(nextState, playerId, {
-          type: "resolve_spectre_flip",
-          targetPlayerIndex: option.targetPlayerIndex,
-          columnIndex: option.columnIndex,
-          rowIndex: option.rowIndex,
-        });
-      } catch (error) {
-        if (error.message === "La partie est terminee.") {
-          return [{
-            actions,
-            resultingState: nextState,
-          }];
-        }
-        throw error;
-      }
-      return expandPendingChoicesForOutcome(nextState, playerId, [
-        ...actions,
-        {
-          type: "resolve_spectre_flip",
-          targetPlayerIndex: option.targetPlayerIndex,
-          columnIndex: option.columnIndex,
-          rowIndex: option.rowIndex,
-        },
-      ]);
-    });
   }
 
   if (state.pendingChoice.type === "banshee_discard") {
@@ -1432,26 +1310,6 @@ function chooseBotPendingChoice(game, botIndex) {
     };
   }
 
-  if (pendingChoice.type === "spectre_flip") {
-    const visibleOpponentOptions = pendingChoice.options
-      .filter((option) => option.targetPlayerIndex !== botIndex && option.cardValue > 0)
-      .sort((a, b) => b.cardValue - a.cardValue);
-
-    const target = visibleOpponentOptions[0] || pendingChoice.options[0];
-
-    return {
-      actions: [
-        {
-          type: "resolve_spectre_flip",
-          targetPlayerIndex: target.targetPlayerIndex,
-          columnIndex: target.columnIndex,
-          rowIndex: target.rowIndex,
-        },
-      ],
-      score: (target?.cardValue || 0) + 1,
-    };
-  }
-
   if (pendingChoice.type === "banshee_discard") {
     const target = [...pendingChoice.options].sort((a, b) => {
       const scoreA =
@@ -1578,7 +1436,7 @@ function processBotTurns(game) {
       break;
     }
 
-    game.log.unshift(`${bot.name} analyse le plateau (niveau ${difficulty}).`);
+    game.log.unshift(`${bot.name} analyse le plateau.`);
 
     for (const action of chosen.actions) {
       if (game.winner) {
@@ -1763,24 +1621,6 @@ function performAction(game, playerId, action) {
       ...(pendingPlay || {}),
       boardFlipResolvedCase: sourceCase,
     };
-    finalizeTurnAfterResolvedPlay(
-      game,
-      playerIndex,
-      pendingPlay?.wasLeftmostCard,
-      pendingPlay?.previousPosition,
-      pendingPlay?.shouldRefillRow
-    );
-    game.pendingPlay = null;
-    return;
-  }
-
-  if (action.type === "resolve_spectre_flip") {
-    if (!game.pendingChoice || game.pendingChoice.playerIndex !== playerIndex) {
-      throw new Error("Aucun choix Spectre en attente.");
-    }
-
-    const pendingPlay = game.pendingPlay;
-    resolveSpectreFlipChoice(game, action);
     finalizeTurnAfterResolvedPlay(
       game,
       playerIndex,
