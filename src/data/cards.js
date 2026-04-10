@@ -48,11 +48,4 @@ export const cards = [
     moon: false,
     chief: false,
   })),
-  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
-    id: `spectre-${value}`,
-    type: "spectre",
-    value,
-    moon: false,
-    chief: false,
-  })),
 ];
