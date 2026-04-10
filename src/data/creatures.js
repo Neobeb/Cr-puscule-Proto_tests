@@ -34,9 +34,4 @@ export const CREATURES = {
     color: "#c4b5fd",
     icon: "🕯️",
   },
-  spectre: {
-    label: "Spectre",
-    color: "#bfdbfe",
-    icon: "👻",
-  },
 };
