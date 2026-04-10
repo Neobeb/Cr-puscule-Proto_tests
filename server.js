@@ -895,7 +895,7 @@ function createInitialState(hostName, options = {}) {
   const hasBot = options.mode === "bot";
   const difficulty = Number(options.botDifficulty ?? 0);
   const playerTwo = hasBot
-    ? createPlayer(`IA niveau ${difficulty}`, {
+    ? createPlayer("IA", {
         isBot: true,
         botDifficulty: difficulty,
       })
@@ -957,18 +957,18 @@ function createBotVsBotState(difficultyA = 0, difficultyB = 0) {
     botDifficulty: difficultyB,
   });
 
-  game.players[0] = createPlayer(`IA ${difficultyA}`, {
+  game.players[0] = createPlayer("IA A", {
     isBot: true,
     botDifficulty: difficultyA,
   });
   game.players[0].columnMoons = [1, 0, 0, 0];
-  game.players[1].name = `IA ${difficultyB}`;
+  game.players[1].name = "IA B";
   game.players[1].isBot = true;
   game.players[1].botDifficulty = difficultyB;
   game.phase = "playing";
   game.mode = "bot";
   game.stats = createEmptyStats();
-  game.log = [`Partie creee IA ${difficultyA} vs IA ${difficultyB}.`];
+  game.log = ["Partie creee IA vs IA."];
 
   return game;
 }
