@@ -102,9 +102,9 @@ const CARD_RULES = [
   { name: "Vampire", effect: "Copie la valeur de la carte du dessus dans la colonne adverse correspondante." },
   { name: "Squelette", effect: "Avance de 1 puis rejoue s'il est pose sur une lune ou sur une carte lune." },
   { name: "Loup", effect: "Avance de 2 par lune presente dans la colonne adverse correspondante." },
-  { name: "Zombie", effect: "Avance selon votre nombre total de zombies. A 5 ou plus, gagne une etoile." },
+  { name: "Zombie", effect: "Avance selon votre nombre total de zombies. Tous les zombies sont des chefs. A 5 ou plus, gagne une etoile." },
   { name: "Reflet", effect: "Copie la valeur de la carte au meme niveau a gauche ou a droite. Si les deux existent, choisissez." },
-  { name: "Masque", effect: "Avance de 1 par colonne de votre cote contenant au moins une carte retournee." },
+  { name: "Banshee", effect: "Defausse une colonne, puis avance du nombre de lunes dans cette colonne." },
   { name: "Spectre", effect: "Retourne une carte visible puis avance de 1." },
 ];
 
@@ -582,6 +582,8 @@ export default function App() {
                   {pendingChoice
                     ? pendingChoice.type === "reflet"
                       ? "Choisissez si le Reflet copie la carte de gauche ou de droite."
+                      : pendingChoice.type === "banshee_discard"
+                      ? "Banshee : choisissez une colonne a defausser."
                       : pendingChoice.type === "spectre_flip"
                       ? "Spectre : choisissez une carte visible a retourner."
                       : `Case ${pendingChoice.sourceCase} : choisissez une carte a retourner, ou passez.`
@@ -647,6 +649,35 @@ export default function App() {
                       >
                         {option.targetPlayerName} col {option.columnIndex + 1} :{" "}
                         {option.cardLabel} {option.cardValue}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {pendingChoice?.type === "banshee_discard" ? (
+                <div style={choicePanelStyle}>
+                  <div style={{ fontWeight: 800, marginBottom: 10 }}>
+                    Banshee : defausser une colonne
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {pendingChoice.options.map((option) => (
+                      <button
+                        key={`${option.targetPlayerIndex}-${option.columnIndex}`}
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          sendAction({
+                            type: "resolve_banshee_discard",
+                            targetPlayerIndex: option.targetPlayerIndex,
+                            columnIndex: option.columnIndex,
+                          });
+                        }}
+                        style={choiceButtonStyle}
+                      >
+                        {option.targetPlayerName} col {option.columnIndex + 1} :{" "}
+                        {option.moonCount} lune(s)
                       </button>
                     ))}
                   </div>
