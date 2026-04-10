@@ -9,9 +9,8 @@ const EFFECT_HINTS = {
   loup: "lunes x2",
   zombie: "zombies cumul",
   reflet: "meme niveau",
-  masque: "colonnes cachees",
+  banshee: "defausse lune",
   spectre: "retourne +1",
-  slime: "libre",
 };
 
 export default function CardView({
