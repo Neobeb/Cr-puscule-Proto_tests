@@ -113,8 +113,10 @@ function createEmptyStats() {
       zombie: 0,
     },
     caseEntries: {
+      3: 0,
       5: 0,
       8: 0,
+      10: 0,
     },
     case5: {
       prompts: 0,
@@ -122,6 +124,8 @@ function createEmptyStats() {
       skipped: 0,
     },
     case8ZombieBoosts: 0,
+    rowRefills: 0,
+    rowReplacements: 0,
     cardActivations: {},
     cardMovementTotal: {},
     replaysGranted: {},
@@ -490,9 +494,52 @@ function createDiscardColumnOptions(game, ownerPlayerIndex) {
   return options;
 }
 
+function refillCommonRow(game, sourceLabel, options = {}) {
+  const stats = ensureStats(game);
+  const rowWasFull = game.row.length >= 4;
+  const replaceIfFull = Boolean(options.replaceIfFull);
+
+  if (rowWasFull && !replaceIfFull) {
+    return;
+  }
+
+  const cardsToDraw = rowWasFull ? 4 : 4 - game.row.length;
+
+  if (cardsToDraw <= 0 || game.deck.length === 0) {
+    game.log.unshift(`${sourceLabel} : aucune carte disponible pour refaire la rangee.`);
+    return;
+  }
+
+  if (rowWasFull) {
+    game.row = [];
+    stats.rowReplacements += 1;
+  }
+
+  const { drawn, remaining } = drawCards(game.deck, Math.min(cardsToDraw, game.deck.length));
+
+  if (!drawn.length) {
+    game.log.unshift(`${sourceLabel} : aucune carte disponible pour refaire la rangee.`);
+    return;
+  }
+
+  game.row.push(...drawn);
+  game.deck = remaining;
+  stats.rowRefills += 1;
+  game.log.unshift(
+    rowWasFull
+      ? `${sourceLabel} : la rangee pleine est defaussee puis ${drawn.length} carte(s) sont revelee(s).`
+      : `${sourceLabel} : ${drawn.length} carte(s) ajoutee(s) a la rangee.`
+  );
+}
+
 function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = {}) {
   const player = game.players[playerIndex];
   const skippedCase = options.skipBoardCase ?? null;
+
+  if (player.position === 3 && previousPosition !== 3) {
+    ensureStats(game).caseEntries[3] += 1;
+    refillCommonRow(game, `${player.name} atteint la case 3`, { replaceIfFull: true });
+  }
 
   if (
     player.position === 5 &&
@@ -544,6 +591,12 @@ function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = 
     game.log.unshift(
       `${player.name} atteint la case 8 et peut retourner une carte, chez lui ou chez l'adversaire.`
     );
+    return;
+  }
+
+  if (player.position === 10 && previousPosition !== 10) {
+    ensureStats(game).caseEntries[10] += 1;
+    refillCommonRow(game, `${player.name} atteint la case 10`, { replaceIfFull: true });
   }
 }
 
@@ -1505,13 +1558,7 @@ function finalizeTurnAfterResolvedPlay(
   }
 
   if (wasLeftmostCard || shouldRefillRow) {
-    const missingCards = 4 - game.row.length;
-    const { drawn, remaining } = drawCards(game.deck, missingCards);
-    if (drawn.length > 0) {
-      game.row.push(...drawn);
-      game.deck = remaining;
-      game.log.unshift(`Refill : ${drawn.length} carte(s) ajoutee(s) a la rangee.`);
-    }
+    refillCommonRow(game, "Refill");
   }
 
   if (resolveDeckExhaustedEndgame(game)) {
