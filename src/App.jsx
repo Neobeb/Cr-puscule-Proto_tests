@@ -109,8 +109,10 @@ const CARD_RULES = [
 
 const BOARD_RULES = [
   { name: "Pioche cachee", effect: "A votre tour, vous pouvez jouer la premiere carte du deck face retournee. Son effet joue est toujours +1." },
+  { name: "Case 3", effect: "Refill de la rangee. Si elle est pleine, elle est defaussee puis remplacee." },
   { name: "Case 5", effect: "Vous pouvez retourner la derniere carte visible d'une colonne, chez vous ou chez l'adversaire." },
   { name: "Case 8", effect: "Vous pouvez retourner la derniere carte visible d'une colonne, chez vous ou chez l'adversaire." },
+  { name: "Case 10", effect: "Refill de la rangee. Si elle est pleine, elle est defaussee puis remplacee." },
   { name: "Chefs", effect: "Apres une etoile, les deux pions reviennent a 0 puis avancent du nombre de chefs poses de chaque cote." },
 ];
 
