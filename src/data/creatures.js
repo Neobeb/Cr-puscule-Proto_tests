@@ -34,6 +34,11 @@ export const CREATURES = {
     color: "#c4b5fd",
     icon: "🕯️",
   },
+  harpie: {
+    label: "Harpie",
+    color: "#fecdd3",
+    icon: "H",
+  },
   statue: {
     label: "Statue",
     color: "#cbd5e1",
