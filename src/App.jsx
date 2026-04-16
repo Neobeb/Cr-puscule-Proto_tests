@@ -97,7 +97,8 @@ function Panel({ title, children }) {
 }
 
 const CARD_RULES = [
-  { name: "Recto", effect: "Toute carte jouee face retournee fait seulement +1 case, n'a aucune valeur, et compte comme une lune tant qu'elle reste retournee." },
+  { name: "Face cachee", effect: "Une carte de la rangee peut etre jouee face cachee dans n'importe quelle colonne. Elle n'a aucune valeur, compte comme une lune, et avance de 1." },
+  { name: "Statue", effect: "Chaque joueur commence avec une Statue 2 avec lune dans sa deuxieme colonne." },
   { name: "Sorciere", effect: "Avance de 3 si votre pion est dans la zone de la colonne jouee." },
   { name: "Vampire", effect: "Copie la valeur de la carte du dessus dans la colonne adverse correspondante." },
   { name: "Squelette", effect: "Avance de 1 puis rejoue s'il est pose sur une lune ou sur une carte lune." },
@@ -108,7 +109,6 @@ const CARD_RULES = [
 ];
 
 const BOARD_RULES = [
-  { name: "Pioche cachee", effect: "A votre tour, vous pouvez jouer la premiere carte du deck face retournee. Son effet joue est toujours +1." },
   { name: "Case 3", effect: "Refill de la rangee. Si elle est pleine, elle est defaussee puis remplacee." },
   { name: "Case 5", effect: "Vous pouvez retourner la derniere carte visible d'une colonne, chez vous ou chez l'adversaire." },
   { name: "Case 8", effect: "Vous pouvez retourner la derniere carte visible d'une colonne, chez vous ou chez l'adversaire." },
@@ -127,7 +127,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
-  const [hiddenDrawMode, setHiddenDrawMode] = useState(false);
+  const [hiddenPlacementMode, setHiddenPlacementMode] = useState(false);
   const [animationState, setAnimationState] = useState({
     movedPlayers: [],
     starBurst: false,
@@ -299,8 +299,8 @@ export default function App() {
     : "";
 
   useEffect(() => {
-    if (!viewerCanAct || pendingChoice || activePlayerBlocked || selectedCard) {
-      setHiddenDrawMode(false);
+    if (!viewerCanAct || pendingChoice || activePlayerBlocked || !selectedCard) {
+      setHiddenPlacementMode(false);
     }
   }, [viewerCanAct, pendingChoice, activePlayerBlocked, selectedCard]);
 
@@ -574,11 +574,11 @@ export default function App() {
                       : `Case ${pendingChoice.sourceCase} : choisissez une carte a retourner, ou passez.`
                     : activePlayerBlocked
                     ? "Aucun coup possible : choisissez une colonne a defausser."
-                    : hiddenDrawMode
-                    ? "Pioche cachee selectionnee : choisissez une colonne pour jouer le recto +1."
+                    : hiddenPlacementMode
+                    ? "Pose face cachee selectionnee : choisissez une colonne."
                     : selectedCard
-                    ? `Carte selectionnee : ${selectedCardLabel} ${selectedCard.value}. Choisissez une colonne.`
-                    : "Selectionnez une carte dans la rangee commune, ou jouez la premiere carte du deck face retournee."}
+                    ? `Carte selectionnee : ${selectedCardLabel} ${selectedCard.value}. Jouez-la normalement ou face cachee.`
+                    : "Selectionnez une carte dans la rangee commune."}
                 </div>
               ) : null}
 
@@ -695,20 +695,20 @@ export default function App() {
             <Panel title="Rangee commune">
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
                 <button
-                  onClick={() => setHiddenDrawMode((current) => !current)}
+                  onClick={() => setHiddenPlacementMode((current) => !current)}
                   disabled={
                     !viewerCanAct ||
                     activePlayerBlocked ||
                     game.phase !== "playing" ||
                     Boolean(pendingChoice) ||
-                    game.deckCount === 0
+                    !selectedCard
                   }
-                  style={hiddenDrawMode ? primaryButtonStyle : secondaryButtonStyle}
+                  style={hiddenPlacementMode ? primaryButtonStyle : secondaryButtonStyle}
                 >
-                  {hiddenDrawMode ? "Pioche cachee selectionnee" : "Jouer la premiere carte du deck face retournee"}
+                  {hiddenPlacementMode ? "Pose face cachee selectionnee" : "Poser la carte selectionnee face cachee"}
                 </button>
-                {hiddenDrawMode ? (
-                  <button onClick={() => setHiddenDrawMode(false)} style={smallButtonStyle}>
+                {hiddenPlacementMode ? (
+                  <button onClick={() => setHiddenPlacementMode(false)} style={smallButtonStyle}>
                     Annuler
                   </button>
                 ) : null}
@@ -717,7 +717,7 @@ export default function App() {
                 row={game.row}
                 selectedCardIndex={game.selectedCardIndex}
                 onSelectCard={(cardIndex) => {
-                  setHiddenDrawMode(false);
+                  setHiddenPlacementMode(false);
                   sendAction({ type: "select_card", cardIndex });
                 }}
                 disabled={
@@ -725,7 +725,7 @@ export default function App() {
                   activePlayerBlocked ||
                   game.phase !== "playing" ||
                   Boolean(pendingChoice) ||
-                  hiddenDrawMode
+                  hiddenPlacementMode
                 }
               />
             </Panel>
@@ -739,13 +739,13 @@ export default function App() {
                 canInteract={viewerCanAct && game.phase === "playing" && !pendingChoice}
                 animationState={animationState}
                 onColumnClick={(columnIndex) =>
-                  hiddenDrawMode
+                  hiddenPlacementMode
                     ? sendAction({
-                        type: "play_hidden_card",
+                        type: "play_selected_face_down",
                         columnIndex,
                       }).then((success) => {
                         if (success) {
-                          setHiddenDrawMode(false);
+                          setHiddenPlacementMode(false);
                         }
                       })
                     : sendAction({
