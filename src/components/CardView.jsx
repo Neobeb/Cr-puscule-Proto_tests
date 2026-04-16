@@ -7,7 +7,7 @@ const EFFECT_HINTS = {
   vampire: "copie face",
   squelette: "lune +1",
   loup: "lunes x2",
-  zombie: "zombies cumul",
+  zombie: "+1/+2/+4/+6/⭐",
   reflet: "meme niveau",
   banshee: "defausse lune",
   statue: "lune fixe",
