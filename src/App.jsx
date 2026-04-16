@@ -110,10 +110,21 @@ const CARD_RULES = [
 ];
 
 const BOARD_RULES = [
-  { name: "Cases 4 et 8", effect: "Stop : si un deplacement atteint ou depasse cette case, le pion s'y arrete." },
-  { name: "Case 6", effect: "Vous pouvez retourner la derniere carte visible d'une de vos colonnes." },
+  { name: "Case 5", effect: "Vous pouvez retourner la derniere carte visible d'une de vos colonnes." },
+  { name: "Case 9", effect: "Stop : si un deplacement atteint ou depasse cette case, le pion s'y arrete." },
   { name: "Chefs", effect: "Apres une etoile, les deux pions reviennent a 0 puis avancent du nombre de chefs poses de chaque cote." },
   { name: "Etoile", effect: "Quand une etoile est gagnee, la rangee commune est automatiquement refaite." },
+];
+
+const FAMILY_OPTIONS = [
+  { type: "sorciere", label: "Sorciere" },
+  { type: "vampire", label: "Vampire" },
+  { type: "squelette", label: "Squelette" },
+  { type: "loup", label: "Loup" },
+  { type: "zombie", label: "Zombie" },
+  { type: "reflet", label: "Reflet" },
+  { type: "banshee", label: "Banshee" },
+  { type: "harpie", label: "Harpie" },
 ];
 
 export default function App() {
@@ -122,6 +133,9 @@ export default function App() {
   const [game, setGame] = useState(null);
   const [createName, setCreateName] = useState("");
   const [createMode, setCreateMode] = useState("online");
+  const [selectedFamilyTypes, setSelectedFamilyTypes] = useState(
+    FAMILY_OPTIONS.map((family) => family.type)
+  );
   const [joinName, setJoinName] = useState("");
   const [joinCode, setJoinCode] = useState(initialSession.gameId || "");
   const [error, setError] = useState("");
@@ -201,6 +215,7 @@ export default function App() {
         body: JSON.stringify({
           playerName: createName,
           mode: createMode,
+          familyTypes: selectedFamilyTypes,
         }),
       });
 
@@ -219,6 +234,14 @@ export default function App() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function toggleFamily(type) {
+    setSelectedFamilyTypes((current) =>
+      current.includes(type)
+        ? current.filter((entry) => entry !== type)
+        : [...current, type]
+    );
   }
 
   async function joinGame() {
@@ -461,9 +484,47 @@ export default function App() {
                 <option value="online">Partie en ligne a 2 joueurs</option>
                 <option value="bot">Partie contre IA</option>
               </select>
-              <button onClick={createGame} disabled={busy} style={primaryButtonStyle}>
+              <div style={familySelectorStyle}>
+                <div style={{ fontWeight: 800, marginBottom: 8 }}>Familles en jeu</div>
+                <div style={familyGridStyle}>
+                  {FAMILY_OPTIONS.map((family) => (
+                    <label key={family.type} style={familyOptionStyle}>
+                      <input
+                        type="checkbox"
+                        checked={selectedFamilyTypes.includes(family.type)}
+                        onChange={() => toggleFamily(family.type)}
+                      />
+                      <span>{family.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFamilyTypes(FAMILY_OPTIONS.map((family) => family.type))}
+                    style={miniButtonStyle}
+                  >
+                    Tout cocher
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFamilyTypes([])}
+                    style={miniButtonStyle}
+                  >
+                    Tout retirer
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={createGame}
+                disabled={busy || selectedFamilyTypes.length === 0}
+                style={primaryButtonStyle}
+              >
                 {createMode === "bot" ? "Creer une partie contre IA" : "Creer la partie"}
               </button>
+              {selectedFamilyTypes.length === 0 ? (
+                <div style={smallHelpStyle}>Choisissez au moins une famille.</div>
+              ) : null}
             </Panel>
 
             <Panel title="Rejoindre une partie">
@@ -820,6 +881,49 @@ const smallButtonStyle = {
   border: "1px solid #cbd5e1",
   background: "white",
   cursor: "pointer",
+};
+
+const miniButtonStyle = {
+  padding: "8px 10px",
+  borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  background: "white",
+  cursor: "pointer",
+  fontSize: 12,
+  fontWeight: 700,
+};
+
+const familySelectorStyle = {
+  border: "1px solid #cbd5e1",
+  borderRadius: 14,
+  background: "#f8fafc",
+  padding: 12,
+  marginBottom: 12,
+};
+
+const familyGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+  gap: 8,
+};
+
+const familyOptionStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "8px 10px",
+  borderRadius: 10,
+  background: "white",
+  border: "1px solid #e2e8f0",
+  cursor: "pointer",
+  fontWeight: 700,
+};
+
+const smallHelpStyle = {
+  marginTop: 8,
+  fontSize: 12,
+  color: "#9a3412",
+  fontWeight: 700,
 };
 
 const topBarStyle = {
