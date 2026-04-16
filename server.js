@@ -14,6 +14,7 @@ const TYPE_LABELS = {
   zombie: "Zombie",
   reflet: "Reflet",
   banshee: "Banshee",
+  statue: "Statue",
 };
 
 const cards = [
@@ -211,14 +212,8 @@ function canPlayAnyCard(row, columns) {
   );
 }
 
-function canPlayDeckTopCard(game, playerIndex) {
-  const topDeckCard = game.deck[0];
-
-  if (!topDeckCard) {
-    return false;
-  }
-
-  return game.players[playerIndex].columns.length > 0;
+function canPlaySelectedCardFaceDown(game) {
+  return game.row.length > 0;
 }
 
 function countMoonsInColumn(column, baseMoons = 0) {
@@ -688,7 +683,9 @@ function resolveBansheeDiscardChoice(game, action) {
 
 function applyCardEffect(game, playerIndex, card, columnIndex) {
   if (card.faceUp === false) {
+    recordCardActivation(game, "carte_cachee");
     movePlayer(game, playerIndex, 1);
+    recordCardMovement(game, "carte_cachee", 1);
     game.log.unshift(
       `${game.players[playerIndex].name} joue une carte cachee sans valeur ni effet : +1`
     );
@@ -854,6 +851,8 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
 }
 
 function createPlayer(name, options = {}) {
+  const columns = createStartingColumns();
+
   return {
     id: crypto.randomUUID(),
     name,
@@ -861,16 +860,38 @@ function createPlayer(name, options = {}) {
     botDifficulty: options.botDifficulty ?? null,
     position: 0,
     stars: 0,
-    columns: [[], [], [], []],
+    columns,
     columnMoons: [0, 0, 0, 0],
   };
+}
+
+function createStartingColumns() {
+  const columns = [[], [], [], []];
+  columns[1].push({
+    id: `statue-${crypto.randomUUID()}`,
+    type: "statue",
+    value: 2,
+    moon: true,
+    chief: false,
+    faceUp: true,
+  });
+  columns[3].push({
+    id: `hidden-start-${crypto.randomUUID()}`,
+    type: "hidden",
+    value: null,
+    moon: true,
+    chief: false,
+    faceUp: false,
+    hiddenToken: true,
+  });
+
+  return columns;
 }
 
 function createInitialState(hostName, options = {}) {
   const deck = createDeck();
   const { drawn, remaining } = drawCards(deck, 4);
   const playerOne = createPlayer(normalizeName(hostName, "Joueur 1"));
-  playerOne.columnMoons = [1, 0, 0, 0];
 
   const hasBot = options.mode === "bot";
   const difficulty = Number(options.botDifficulty ?? 0);
@@ -880,7 +901,6 @@ function createInitialState(hostName, options = {}) {
         botDifficulty: difficulty,
       })
     : createPlayer("En attente");
-  playerTwo.columnMoons = [0, 1, 0, 0];
 
   return {
     id: generateId(6),
@@ -926,8 +946,8 @@ function resetGameState(existingGame) {
   existingGame.players.forEach((player, index) => {
     player.position = 0;
     player.stars = 0;
-    player.columns = [[], [], [], []];
-    player.columnMoons = index === 0 ? [1, 0, 0, 0] : [0, 1, 0, 0];
+    player.columns = createStartingColumns();
+    player.columnMoons = [0, 0, 0, 0];
   });
 }
 
@@ -941,7 +961,6 @@ function createBotVsBotState(difficultyA = 0, difficultyB = 0) {
     isBot: true,
     botDifficulty: difficultyA,
   });
-  game.players[0].columnMoons = [1, 0, 0, 0];
   game.players[1].name = "IA B";
   game.players[1].isBot = true;
   game.players[1].botDifficulty = difficultyB;
@@ -960,7 +979,7 @@ function sanitizeGame(game, playerId) {
     game.phase === "playing" &&
     !game.pendingChoice &&
     !canPlayAnyCard(game.row, currentPlayer.columns) &&
-    !canPlayDeckTopCard(game, game.currentPlayer);
+    !canPlaySelectedCardFaceDown(game);
 
   let pendingChoice = null;
 
@@ -1185,9 +1204,15 @@ function getLegalTurnOutcomes(game, playerIndex) {
     return expandPendingChoicesForOutcome(clone(game), playerId, []);
   }
 
+  ensureRowAvailable(game);
+
+  if (game.winner) {
+    return outcomes;
+  }
+
   const player = game.players[playerIndex];
   const blocked =
-    !canPlayAnyCard(game.row, player.columns) && !canPlayDeckTopCard(game, playerIndex);
+    !canPlayAnyCard(game.row, player.columns) && !canPlaySelectedCardFaceDown(game);
 
   if (blocked) {
     for (let columnIndex = 0; columnIndex < player.columns.length; columnIndex += 1) {
@@ -1232,21 +1257,26 @@ function getLegalTurnOutcomes(game, playerIndex) {
       const expanded = expandPendingChoicesForOutcome(nextState, playerId, baseActions);
       outcomes.push(...expanded);
     });
-  });
 
-  if (game.deck.length > 0) {
     player.columns.forEach((column, columnIndex) => {
       const nextState = clone(game);
       performAction(nextState, playerId, {
-        type: "play_hidden_card",
+        type: "select_card",
+        cardIndex,
+      });
+      performAction(nextState, playerId, {
+        type: "play_selected_face_down",
         columnIndex,
       });
       outcomes.push({
-        actions: [{ type: "play_hidden_card", columnIndex }],
+        actions: [
+          { type: "select_card", cardIndex },
+          { type: "play_selected_face_down", columnIndex },
+        ],
         resultingState: nextState,
       });
     });
-  }
+  });
 
   return outcomes;
 }
@@ -1454,7 +1484,7 @@ function chooseBotOutcome(game, botIndex, difficulty) {
   }
 
   const hiddenOutcomes = outcomes.filter(
-    (outcome) => outcome.actions[0]?.type === "play_hidden_card"
+    (outcome) => outcome.actions[1]?.type === "play_selected_face_down"
   );
 
   if (hiddenOutcomes.length) {
@@ -1701,8 +1731,14 @@ function performAction(game, playerId, action) {
     throw new Error("Un choix est en attente avant de poursuivre.");
   }
 
+  ensureRowAvailable(game);
+
+  if (game.winner) {
+    throw new Error("La partie est terminee.");
+  }
+
   const blocked =
-    !canPlayAnyCard(game.row, player.columns) && !canPlayDeckTopCard(game, playerIndex);
+    !canPlayAnyCard(game.row, player.columns) && !canPlaySelectedCardFaceDown(game);
   game.extraTurn = false;
 
   if (action.type === "select_card") {
@@ -1710,10 +1746,6 @@ function performAction(game, playerId, action) {
 
     if (!card) {
       throw new Error("Carte introuvable.");
-    }
-
-    if (blocked) {
-      throw new Error("Aucune carte ne peut etre jouee, il faut defausser une colonne.");
     }
 
     game.selectedCardIndex = action.cardIndex;
@@ -1777,20 +1809,22 @@ function performAction(game, playerId, action) {
     return;
   }
 
-  if (action.type === "play_hidden_card") {
+  if (action.type === "play_selected_face_down") {
     if (blocked) {
       throw new Error("Impossible de jouer une carte cachee, il faut defausser une colonne.");
     }
 
     const columnIndex = action.columnIndex;
+    const cardIndex = game.selectedCardIndex;
     const targetColumn = player.columns[columnIndex];
-    const deckCard = game.deck[0];
+    const selectedCard = game.row[cardIndex];
 
-    if (!targetColumn || !deckCard) {
+    if (!targetColumn || !selectedCard) {
       throw new Error("Cible invalide.");
     }
 
     const previousPosition = player.position;
+    const wasLeftmostCard = cardIndex === 0;
     const hiddenCard = {
       id: `hidden-${crypto.randomUUID()}`,
       type: "hidden",
@@ -1802,10 +1836,10 @@ function performAction(game, playerId, action) {
     };
 
     targetColumn.push(hiddenCard);
-    game.deck.shift();
+    game.row.splice(cardIndex, 1);
     game.selectedCardIndex = null;
     game.log.unshift(
-      `${player.name} pioche une carte face cachee et la joue dans sa colonne ${columnIndex + 1}`
+      `${player.name} joue ${getTypeLabel(selectedCard.type)} ${selectedCard.value} face cachee dans sa colonne ${columnIndex + 1}`
     );
 
     applyCardEffect(game, playerIndex, hiddenCard, columnIndex);
@@ -1815,13 +1849,13 @@ function performAction(game, playerId, action) {
         wasLeftmostCard: false,
         boardFlipResolvedCase: null,
         previousPosition,
-        shouldRefillRow: true,
+        shouldRefillRow: wasLeftmostCard,
       };
       game.updatedAt = Date.now();
       return;
     }
 
-    finalizeTurnAfterResolvedPlay(game, playerIndex, false, previousPosition, true);
+    finalizeTurnAfterResolvedPlay(game, playerIndex, wasLeftmostCard, previousPosition, false);
     return;
   }
 
