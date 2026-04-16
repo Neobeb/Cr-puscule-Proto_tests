@@ -15,6 +15,9 @@ const TYPE_LABELS = {
   reflet: "Reflet",
   banshee: "Banshee",
   harpie: "Harpie",
+  rat: "Rat",
+  momie: "Momie",
+  fee_noire: "Fee noire",
   statue: "Statue",
 };
 
@@ -30,6 +33,9 @@ const DEFAULT_FAMILY_TYPES = [
   "reflet",
   "banshee",
   "harpie",
+  "rat",
+  "momie",
+  "fee_noire",
 ];
 
 function createCardSet(type, values, options = {}) {
@@ -72,6 +78,16 @@ const CARD_SETS = {
   banshee: createCardSet("banshee", STANDARD_VALUES),
   harpie: createCardSet("harpie", STANDARD_VALUES, {
     moonIndexes: [6],
+  }),
+  rat: createCardSet("rat", STANDARD_VALUES, {
+    moonIndexes: [4],
+  }),
+  momie: createCardSet("momie", STANDARD_VALUES, {
+    moonIndexes: [7],
+  }),
+  fee_noire: createCardSet("fee_noire", STANDARD_VALUES, {
+    moonIndexes: [5],
+    chiefIndexes: [9],
   }),
 };
 
@@ -867,6 +883,43 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       recordCardMovement(game, "harpie", move);
       game.log.unshift(
         `${game.players[playerIndex].name} active Harpie ${card.value} : ${moonColumnCount} colonne(s) avec lune -> +${move}/${moonColumnCount}`
+      );
+      return;
+    }
+    case "rat": {
+      recordCardActivation(game, "rat");
+      const columnSize = game.players[playerIndex].columns[columnIndex].length;
+      const move = movePlayer(game, playerIndex, columnSize);
+      recordCardMovement(game, "rat", move);
+      game.log.unshift(
+        `${game.players[playerIndex].name} active Rat ${card.value} : ${columnSize} carte(s) dans la colonne -> +${move}/${columnSize}`
+      );
+      return;
+    }
+    case "momie": {
+      recordCardActivation(game, "momie");
+      const playerColumn = game.players[playerIndex].columns[columnIndex];
+      const cardBelow = playerColumn[playerColumn.length - 2] || null;
+      const requestedMove = cardBelow?.faceUp === false ? 4 : 2;
+      const move = movePlayer(game, playerIndex, requestedMove);
+      recordCardMovement(game, "momie", move);
+      game.log.unshift(
+        `${game.players[playerIndex].name} active Momie ${card.value} : ${cardBelow?.faceUp === false ? "sur carte cachee" : "sans carte cachee dessous"} -> +${move}/${requestedMove}`
+      );
+      return;
+    }
+    case "fee_noire": {
+      recordCardActivation(game, "fee_noire");
+      refillCommonRow(game, `${game.players[playerIndex].name} active Fee noire ${card.value}`, {
+        replaceIfFull: true,
+      });
+      const weakCards = game.row.filter(
+        (rowCard) => rowCard.faceUp !== false && rowCard.value <= 1
+      ).length;
+      const move = movePlayer(game, playerIndex, weakCards);
+      recordCardMovement(game, "fee_noire", move);
+      game.log.unshift(
+        `${game.players[playerIndex].name} active Fee noire ${card.value} : ${weakCards} carte(s) de valeur 0 ou 1 dans la rangee -> +${move}/${weakCards}`
       );
       return;
     }
