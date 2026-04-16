@@ -107,6 +107,9 @@ const CARD_RULES = [
   { name: "Reflet", effect: "Copie la valeur de la carte au meme niveau a gauche ou a droite. Si les deux existent, choisissez." },
   { name: "Banshee", effect: "Defausse une de vos colonnes, puis avance du nombre de lunes dans cette colonne." },
   { name: "Harpie", effect: "Avance de 1 par colonne de votre cote contenant au moins une lune." },
+  { name: "Rat", effect: "Avance de 1 par carte dans la colonne jouee, cette carte incluse." },
+  { name: "Momie", effect: "Avance de 2, ou de 4 si elle est jouee sur une carte face cachee." },
+  { name: "Fee noire", effect: "Refait la rangee, puis avance de 1 par carte de valeur 0 ou 1 dans la rangee." },
 ];
 
 const BOARD_RULES = [
@@ -117,14 +120,61 @@ const BOARD_RULES = [
 ];
 
 const FAMILY_OPTIONS = [
-  { type: "sorciere", label: "Sorciere" },
-  { type: "vampire", label: "Vampire" },
-  { type: "squelette", label: "Squelette" },
-  { type: "loup", label: "Loup" },
-  { type: "zombie", label: "Zombie" },
-  { type: "reflet", label: "Reflet" },
-  { type: "banshee", label: "Banshee" },
-  { type: "harpie", label: "Harpie" },
+  {
+    type: "sorciere",
+    label: "Sorciere",
+    effect: "Avance de 3 si votre pion est dans la zone de la colonne jouee.",
+  },
+  {
+    type: "vampire",
+    label: "Vampire",
+    effect: "Copie la valeur de la carte du dessus dans la colonne adverse.",
+  },
+  {
+    type: "squelette",
+    label: "Squelette",
+    effect: "Avance de 1 puis rejoue s'il est pose sur une lune.",
+  },
+  {
+    type: "loup",
+    label: "Loup",
+    effect: "Avance de 2 par lune dans la colonne adverse.",
+  },
+  {
+    type: "zombie",
+    label: "Zombie",
+    effect: "Avance selon vos zombies. Tous les zombies sont chefs. +1/+2/+4/+6/etoile.",
+  },
+  {
+    type: "reflet",
+    label: "Reflet",
+    effect: "Copie la valeur au meme niveau a gauche ou a droite.",
+  },
+  {
+    type: "banshee",
+    label: "Banshee",
+    effect: "Defausse une de vos colonnes, puis avance du nombre de lunes dedans.",
+  },
+  {
+    type: "harpie",
+    label: "Harpie",
+    effect: "Avance de 1 par colonne de votre cote contenant au moins une lune.",
+  },
+  {
+    type: "rat",
+    label: "Rat",
+    effect: "Avance de 1 par carte dans la colonne jouee, cette carte incluse.",
+  },
+  {
+    type: "momie",
+    label: "Momie",
+    effect: "Avance de 2, ou de 4 si elle est jouee sur une carte face cachee.",
+  },
+  {
+    type: "fee_noire",
+    label: "Fee noire",
+    effect: "Refait la rangee, puis avance de 1 par carte de valeur 0 ou 1 revelee.",
+  },
 ];
 
 export default function App() {
@@ -494,7 +544,10 @@ export default function App() {
                         checked={selectedFamilyTypes.includes(family.type)}
                         onChange={() => toggleFamily(family.type)}
                       />
-                      <span>{family.label}</span>
+                      <span>
+                        <span style={familyLabelStyle}>{family.label}</span>
+                        <span style={familyEffectStyle}>{family.effect}</span>
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -903,20 +956,32 @@ const familySelectorStyle = {
 
 const familyGridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
   gap: 8,
 };
 
 const familyOptionStyle = {
   display: "flex",
-  alignItems: "center",
+  alignItems: "flex-start",
   gap: 8,
   padding: "8px 10px",
   borderRadius: 10,
   background: "white",
   border: "1px solid #e2e8f0",
   cursor: "pointer",
-  fontWeight: 700,
+};
+
+const familyLabelStyle = {
+  display: "block",
+  fontWeight: 800,
+};
+
+const familyEffectStyle = {
+  display: "block",
+  marginTop: 3,
+  color: "#475569",
+  fontSize: 12,
+  lineHeight: 1.25,
 };
 
 const smallHelpStyle = {
