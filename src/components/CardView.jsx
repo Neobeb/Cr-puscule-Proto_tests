@@ -10,6 +10,7 @@ const EFFECT_HINTS = {
   zombie: "zombies cumul",
   reflet: "meme niveau",
   banshee: "defausse lune",
+  statue: "lune fixe",
 };
 
 export default function CardView({
@@ -67,11 +68,6 @@ export default function CardView({
         {isFaceUp && card.chief ? (
           <span title="Chef" style={badgeStyle}>
             👑
-          </span>
-        ) : null}
-        {!isFaceUp ? (
-          <span title="Carte cachee" style={badgeStyle}>
-            +1
           </span>
         ) : null}
       </div>
