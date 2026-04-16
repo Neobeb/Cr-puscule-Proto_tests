@@ -10,6 +10,7 @@ const EFFECT_HINTS = {
   zombie: "+1/+2/+4/+6/⭐",
   reflet: "meme niveau",
   banshee: "defausse lune",
+  harpie: "colonnes lune",
   statue: "lune fixe",
 };
 
