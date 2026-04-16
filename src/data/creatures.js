@@ -39,6 +39,21 @@ export const CREATURES = {
     color: "#fecdd3",
     icon: "H",
   },
+  rat: {
+    label: "Rat",
+    color: "#d6d3d1",
+    icon: "R",
+  },
+  momie: {
+    label: "Momie",
+    color: "#fef3c7",
+    icon: "M",
+  },
+  fee_noire: {
+    label: "Fee noire",
+    color: "#ddd6fe",
+    icon: "F",
+  },
   statue: {
     label: "Statue",
     color: "#cbd5e1",
