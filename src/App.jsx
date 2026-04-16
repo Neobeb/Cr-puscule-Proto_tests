@@ -106,14 +106,14 @@ const CARD_RULES = [
   { name: "Zombie", effect: "Avance selon votre nombre total de zombies. Tous les zombies sont des chefs. +1/+2/+4/+6/⭐" },
   { name: "Reflet", effect: "Copie la valeur de la carte au meme niveau a gauche ou a droite. Si les deux existent, choisissez." },
   { name: "Banshee", effect: "Defausse une de vos colonnes, puis avance du nombre de lunes dans cette colonne." },
+  { name: "Harpie", effect: "Avance de 1 par colonne de votre cote contenant au moins une lune." },
 ];
 
 const BOARD_RULES = [
-  { name: "Case 3", effect: "Refill de la rangee. Si elle est pleine, elle est defaussee puis remplacee." },
-  { name: "Case 5", effect: "Vous pouvez retourner la derniere carte visible d'une colonne, chez vous ou chez l'adversaire." },
-  { name: "Case 8", effect: "Vous pouvez retourner la derniere carte visible d'une colonne, chez vous ou chez l'adversaire." },
-  { name: "Case 10", effect: "Refill de la rangee. Si elle est pleine, elle est defaussee puis remplacee." },
+  { name: "Cases 4 et 8", effect: "Stop : si un deplacement atteint ou depasse cette case, le pion s'y arrete." },
+  { name: "Case 6", effect: "Vous pouvez retourner la derniere carte visible d'une de vos colonnes." },
   { name: "Chefs", effect: "Apres une etoile, les deux pions reviennent a 0 puis avancent du nombre de chefs poses de chaque cote." },
+  { name: "Etoile", effect: "Quand une etoile est gagnee, la rangee commune est automatiquement refaite." },
 ];
 
 export default function App() {
