@@ -60,6 +60,11 @@ export default function CardView({
           justifyContent: "flex-start",
         }}
       >
+        {isFaceUp ? (
+          <span title="Valeur" style={valueBadgeStyle}>
+            {card.value}
+          </span>
+        ) : null}
         {card.moon ? (
           <span title="Lune" style={badgeStyle}>
             🌙
@@ -154,4 +159,12 @@ const badgeStyle = {
   borderRadius: 999,
   padding: "3px 6px",
   boxShadow: "0 2px 4px rgba(15,23,42,0.12)",
+};
+
+const valueBadgeStyle = {
+  ...badgeStyle,
+  minWidth: 18,
+  fontWeight: 900,
+  background: "rgba(15,23,42,0.9)",
+  color: "#f8fafc",
 };
