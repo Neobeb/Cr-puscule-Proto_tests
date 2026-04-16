@@ -34,4 +34,9 @@ export const CREATURES = {
     color: "#c4b5fd",
     icon: "🕯️",
   },
+  statue: {
+    label: "Statue",
+    color: "#cbd5e1",
+    icon: "🗿",
+  },
 };
