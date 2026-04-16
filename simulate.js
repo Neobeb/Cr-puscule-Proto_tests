@@ -19,9 +19,8 @@ function createAggregate() {
     cardActivations: {},
     cardMovementTotal: {},
     replaysGranted: {},
-    caseEntries: { 4: 0, 6: 0, 8: 0 },
+    caseEntries: { 5: 0, 9: 0 },
     boardFlip: { prompts: 0, used: 0, skipped: 0 },
-    case8ZombieBoosts: 0,
     rowRefills: 0,
     rowReplacements: 0,
     blockedTurns: 0,
@@ -101,16 +100,14 @@ function buildReport(aggregate) {
       weakestByAverageMove: weakest,
     },
     board: {
-      case4StopEntries: aggregate.caseEntries[4],
-      case6FlipEntries: aggregate.caseEntries[6],
-      case8Entries: aggregate.caseEntries[8],
+      case5FlipEntries: aggregate.caseEntries[5],
+      case9StopEntries: aggregate.caseEntries[9],
       rowRefillsTotal: aggregate.rowRefills,
       rowNormalRefills: aggregate.rowRefills - aggregate.rowReplacements,
       rowFullReplacements: aggregate.rowReplacements,
       boardFlipPrompts: aggregate.boardFlip.prompts,
       boardFlipUsed: aggregate.boardFlip.used,
       boardFlipSkipped: aggregate.boardFlip.skipped,
-      case8ZombieBoosts: aggregate.case8ZombieBoosts,
     },
     blocks: {
       blockedTurns: aggregate.blockedTurns,
@@ -144,13 +141,11 @@ function simulateSeries({
     aggregate.turnsMax = Math.max(aggregate.turnsMax, stats.turnsCompleted || 0);
     aggregate.starsBySource.case12 += stats.starsBySource?.case12 || 0;
     aggregate.starsBySource.zombie += stats.starsBySource?.zombie || 0;
-    aggregate.caseEntries[4] += stats.caseEntries?.[4] || 0;
-    aggregate.caseEntries[6] += stats.caseEntries?.[6] || 0;
-    aggregate.caseEntries[8] += stats.caseEntries?.[8] || 0;
+    aggregate.caseEntries[5] += stats.caseEntries?.[5] || 0;
+    aggregate.caseEntries[9] += stats.caseEntries?.[9] || 0;
     aggregate.boardFlip.prompts += stats.boardFlip?.prompts || 0;
     aggregate.boardFlip.used += stats.boardFlip?.used || 0;
     aggregate.boardFlip.skipped += stats.boardFlip?.skipped || 0;
-    aggregate.case8ZombieBoosts += stats.case8ZombieBoosts || 0;
     aggregate.rowRefills += stats.rowRefills || 0;
     aggregate.rowReplacements += stats.rowReplacements || 0;
     aggregate.blockedTurns += stats.blockedTurns || 0;

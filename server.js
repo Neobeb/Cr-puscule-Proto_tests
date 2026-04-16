@@ -20,7 +20,17 @@ const TYPE_LABELS = {
 
 const STANDARD_VALUES = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4];
 const PREMIUM_VALUES = [3, 3, 3, 3, 4, 4, 4, 4];
-const STOP_CASES = [4, 8];
+const STOP_CASES = [9];
+const DEFAULT_FAMILY_TYPES = [
+  "sorciere",
+  "vampire",
+  "squelette",
+  "loup",
+  "zombie",
+  "reflet",
+  "banshee",
+  "harpie",
+];
 
 function createCardSet(type, values, options = {}) {
   const moonIndexes = new Set(options.moonIndexes || []);
@@ -36,34 +46,43 @@ function createCardSet(type, values, options = {}) {
   }));
 }
 
-const cards = [
-  ...createCardSet("sorciere", STANDARD_VALUES, {
+const CARD_SETS = {
+  sorciere: createCardSet("sorciere", STANDARD_VALUES, {
     moonIndexes: [2],
     chiefIndexes: [9],
   }),
-  ...createCardSet("vampire", PREMIUM_VALUES, {
+  vampire: createCardSet("vampire", PREMIUM_VALUES, {
     moonIndexes: [4],
   }),
-  ...createCardSet("squelette", STANDARD_VALUES, {
+  squelette: createCardSet("squelette", STANDARD_VALUES, {
     moonIndexes: [9],
     chiefIndexes: [0],
   }),
-  ...createCardSet("loup", STANDARD_VALUES, {
+  loup: createCardSet("loup", STANDARD_VALUES, {
     moonIndexes: [8],
     chiefIndexes: [2, 3],
   }),
-  ...createCardSet("zombie", STANDARD_VALUES, {
+  zombie: createCardSet("zombie", STANDARD_VALUES, {
     allChiefs: true,
   }),
-  ...createCardSet("reflet", PREMIUM_VALUES, {
+  reflet: createCardSet("reflet", PREMIUM_VALUES, {
     moonIndexes: [4],
     chiefIndexes: [6, 7],
   }),
-  ...createCardSet("banshee", STANDARD_VALUES),
-  ...createCardSet("harpie", STANDARD_VALUES, {
+  banshee: createCardSet("banshee", STANDARD_VALUES),
+  harpie: createCardSet("harpie", STANDARD_VALUES, {
     moonIndexes: [6],
   }),
-];
+};
+
+function normalizeFamilyTypes(familyTypes) {
+  const requested = Array.isArray(familyTypes) ? familyTypes : DEFAULT_FAMILY_TYPES;
+  const valid = requested.filter((type, index) =>
+    DEFAULT_FAMILY_TYPES.includes(type) && requested.indexOf(type) === index
+  );
+
+  return valid.length ? valid : DEFAULT_FAMILY_TYPES;
+}
 
 const games = new Map();
 
@@ -110,16 +129,14 @@ function createEmptyStats() {
       zombie: 0,
     },
     caseEntries: {
-      4: 0,
-      6: 0,
-      8: 0,
+      5: 0,
+      9: 0,
     },
     boardFlip: {
       prompts: 0,
       used: 0,
       skipped: 0,
     },
-    case8ZombieBoosts: 0,
     rowRefills: 0,
     rowReplacements: 0,
     cardActivations: {},
@@ -170,8 +187,9 @@ function recordReplayGranted(game, type, amount = 1) {
   stats.replaysGranted[type] = (stats.replaysGranted[type] || 0) + amount;
 }
 
-function createDeck() {
-  const deck = clone(cards);
+function createDeck(familyTypes = DEFAULT_FAMILY_TYPES) {
+  const selectedFamilies = normalizeFamilyTypes(familyTypes);
+  const deck = clone(selectedFamilies.flatMap((type) => CARD_SETS[type] || []));
 
   for (let i = deck.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -564,24 +582,16 @@ function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = 
   const skippedCase = options.skipBoardCase ?? null;
 
   if (
-    player.position === 4 &&
-    previousPosition !== 4
+    player.position === 5 &&
+    previousPosition !== 5 &&
+    skippedCase !== 5
   ) {
-    ensureStats(game).caseEntries[4] += 1;
-    game.log.unshift(`${player.name} s'arrete sur la case stop 4.`);
-  }
-
-  if (
-    player.position === 6 &&
-    previousPosition !== 6 &&
-    skippedCase !== 6
-  ) {
-    ensureStats(game).caseEntries[6] += 1;
+    ensureStats(game).caseEntries[5] += 1;
     const flipOptions = createFlipOptions(game, playerIndex);
 
     if (!flipOptions.length) {
       game.log.unshift(
-        `${player.name} atteint la case 6, mais aucune de ses cartes n'est disponible a retourner.`
+        `${player.name} atteint la case 5, mais aucune de ses cartes n'est disponible a retourner.`
       );
       return;
     }
@@ -590,19 +600,19 @@ function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = 
       type: "board_flip",
       playerIndex,
       optional: true,
-      sourceCase: 6,
+      sourceCase: 5,
       options: flipOptions,
     };
     ensureStats(game).boardFlip.prompts += 1;
     game.log.unshift(
-      `${player.name} atteint la case 6 et peut retourner une de ses cartes.`
+      `${player.name} atteint la case 5 et peut retourner une de ses cartes.`
     );
     return;
   }
 
-  if (player.position === 8 && previousPosition !== 8) {
-    ensureStats(game).caseEntries[8] += 1;
-    game.log.unshift(`${player.name} s'arrete sur la case stop 8.`);
+  if (player.position === 9 && previousPosition !== 9) {
+    ensureStats(game).caseEntries[9] += 1;
+    game.log.unshift(`${player.name} s'arrete sur la case stop 9.`);
   }
 }
 
@@ -906,7 +916,8 @@ function createStartingColumns() {
 }
 
 function createInitialState(hostName, options = {}) {
-  const deck = createDeck();
+  const familyTypes = normalizeFamilyTypes(options.familyTypes);
+  const deck = createDeck(familyTypes);
   const { drawn, remaining } = drawCards(deck, 4);
   const playerOne = createPlayer(normalizeName(hostName, "Joueur 1"));
 
@@ -931,6 +942,7 @@ function createInitialState(hostName, options = {}) {
     extraTurn: false,
     pendingChoice: null,
     pendingPlay: null,
+    familyTypes,
     deck: remaining,
     row: drawn,
     players: [playerOne, playerTwo],
@@ -943,7 +955,8 @@ function createInitialState(hostName, options = {}) {
 }
 
 function resetGameState(existingGame) {
-  const deck = createDeck();
+  const familyTypes = normalizeFamilyTypes(existingGame.familyTypes);
+  const deck = createDeck(familyTypes);
   const { drawn, remaining } = drawCards(deck, 4);
 
   existingGame.phase = "playing";
@@ -954,6 +967,7 @@ function resetGameState(existingGame) {
   existingGame.extraTurn = false;
   existingGame.pendingChoice = null;
   existingGame.pendingPlay = null;
+  existingGame.familyTypes = familyTypes;
   existingGame.deck = remaining;
   existingGame.row = drawn;
   existingGame.updatedAt = Date.now();
@@ -1074,6 +1088,7 @@ function sanitizeGame(game, playerId) {
     winner: game.winner,
     currentPlayer: game.currentPlayer,
     currentPlayerName: currentPlayer.name,
+    familyTypes: normalizeFamilyTypes(game.familyTypes),
     selectedCardIndex: game.selectedCardIndex,
     pendingChoice,
     deckCount: game.deck.length,
@@ -1976,6 +1991,7 @@ function handleApi(req, res, url) {
         const state = createInitialState(body.playerName, {
           mode: body.mode,
           botDifficulty: body.botDifficulty,
+          familyTypes: body.familyTypes,
         });
         games.set(state.id, { state, clients: new Set() });
         sendJson(res, 201, {
