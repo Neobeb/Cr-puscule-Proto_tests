@@ -108,8 +108,8 @@ const CARD_RULES = [
   { name: "Banshee", effect: "Defausse une de vos colonnes, puis avance du nombre de lunes dans cette colonne." },
   { name: "Harpie", effect: "Avance de 1 par colonne de votre cote contenant au moins une lune." },
   { name: "Rat", effect: "Avance de 1 par carte dans la colonne jouee, cette carte incluse." },
-  { name: "Momie", effect: "Avance de 2, ou de 4 si elle est jouee sur une carte face cachee." },
-  { name: "Fee noire", effect: "Refait la rangee, puis avance de 1 par carte de valeur 0 ou 1 dans la rangee." },
+  { name: "Momie", effect: "Avance de 2, ou de 3 si elle est jouee sur une carte face cachee." },
+  { name: "Fee noire", effect: "Avance de 1, refait la rangee, puis avance de 1 par carte de valeur 0 ou 1 dans la rangee." },
 ];
 
 const BOARD_RULES = [
@@ -168,12 +168,12 @@ const FAMILY_OPTIONS = [
   {
     type: "momie",
     label: "Momie",
-    effect: "Avance de 2, ou de 4 si elle est jouee sur une carte face cachee.",
+    effect: "Avance de 2, ou de 3 si elle est jouee sur une carte face cachee.",
   },
   {
     type: "fee_noire",
     label: "Fee noire",
-    effect: "Refait la rangee, puis avance de 1 par carte de valeur 0 ou 1 revelee.",
+    effect: "Avance de 1, refait la rangee, puis avance de 1 par carte de valeur 0 ou 1 revelee.",
   },
 ];
 
