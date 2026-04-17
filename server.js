@@ -15,7 +15,8 @@ const TYPE_LABELS = {
   reflet: "Reflet",
   banshee: "Banshee",
   harpie: "Harpie",
-  rat: "Rat",
+  faucheur: "Faucheur",
+  blob: "Blob",
   momie: "Momie",
   fee_noire: "Fee noire",
   statue: "Statue",
@@ -33,7 +34,8 @@ const DEFAULT_FAMILY_TYPES = [
   "reflet",
   "banshee",
   "harpie",
-  "rat",
+  "faucheur",
+  "blob",
   "momie",
   "fee_noire",
 ];
@@ -79,8 +81,11 @@ const CARD_SETS = {
   harpie: createCardSet("harpie", STANDARD_VALUES, {
     moonIndexes: [6],
   }),
-  rat: createCardSet("rat", STANDARD_VALUES, {
+  faucheur: createCardSet("faucheur", STANDARD_VALUES, {
     moonIndexes: [4],
+  }),
+  blob: createCardSet("blob", STANDARD_VALUES, {
+    moonIndexes: [6],
   }),
   momie: createCardSet("momie", STANDARD_VALUES, {
     moonIndexes: [7],
@@ -250,6 +255,10 @@ function getTopValue(column) {
 }
 
 function canPlaceCardInColumn(card, column) {
+  if (card.type === "blob") {
+    return true;
+  }
+
   return card.value >= getTopValue(column);
 }
 
@@ -555,6 +564,30 @@ function createDiscardColumnOptions(game, ownerPlayerIndex) {
   return options;
 }
 
+function createFaucheurDiscardOptions(game, ownerPlayerIndex) {
+  const options = [];
+  const player = game.players[ownerPlayerIndex];
+
+  player.columns.forEach((column, columnIndex) => {
+    const visibleEntry = getLastVisibleCardEntry(column);
+
+    if (!visibleEntry) {
+      return;
+    }
+
+    options.push({
+      targetPlayerIndex: ownerPlayerIndex,
+      columnIndex,
+      rowIndex: visibleEntry.rowIndex,
+      cardType: visibleEntry.card.type,
+      cardValue: getCardEffectiveValue(visibleEntry.card),
+      cardLabel: getTypeLabel(visibleEntry.card.type),
+    });
+  });
+
+  return options;
+}
+
 function refillCommonRow(game, sourceLabel, options = {}) {
   const stats = ensureStats(game);
   const rowWasFull = game.row.length >= 4;
@@ -710,6 +743,42 @@ function resolveBansheeDiscardChoice(game, action) {
   recordCardMovement(game, "banshee", move);
   game.log.unshift(
     `${game.players[pendingChoice.playerIndex].name} active Banshee ${pendingChoice.cardValue} : defausse la colonne ${action.columnIndex + 1} de ${targetPlayer.name} puis +${move}/${option.moonCount}`
+  );
+  game.pendingChoice = null;
+}
+
+function resolveFaucheurDiscardChoice(game, action) {
+  const pendingChoice = game.pendingChoice;
+
+  if (!pendingChoice || pendingChoice.type !== "faucheur_discard") {
+    throw new Error("Aucun choix Faucheur en attente.");
+  }
+
+  const option = pendingChoice.options.find(
+    (entry) =>
+      entry.targetPlayerIndex === action.targetPlayerIndex &&
+      entry.columnIndex === action.columnIndex &&
+      entry.rowIndex === action.rowIndex
+  );
+
+  if (!option) {
+    throw new Error("Cible de defausse invalide.");
+  }
+
+  const targetColumn =
+    game.players[action.targetPlayerIndex].columns[action.columnIndex];
+  const targetCard = targetColumn?.[action.rowIndex];
+
+  if (!targetCard || targetCard.faceUp === false) {
+    throw new Error("Carte introuvable.");
+  }
+
+  targetColumn.splice(action.rowIndex, 1);
+  const move = movePlayer(game, pendingChoice.playerIndex, 2);
+  recordCardActivation(game, "faucheur");
+  recordCardMovement(game, "faucheur", move);
+  game.log.unshift(
+    `${game.players[pendingChoice.playerIndex].name} active Faucheur ${pendingChoice.cardValue} : defausse ${getTypeLabel(targetCard.type)} ${getCardEffectiveValue(targetCard)} en colonne ${action.columnIndex + 1}, puis +${move}/2`
   );
   game.pendingChoice = null;
 }
@@ -886,13 +955,28 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       );
       return;
     }
-    case "rat": {
-      recordCardActivation(game, "rat");
-      const columnSize = game.players[playerIndex].columns[columnIndex].length;
-      const move = movePlayer(game, playerIndex, columnSize);
-      recordCardMovement(game, "rat", move);
+    case "faucheur": {
+      const discardOptions = createFaucheurDiscardOptions(game, playerIndex);
+
+      game.pendingChoice = {
+        type: "faucheur_discard",
+        playerIndex,
+        optional: false,
+        label: "Faucheur",
+        cardValue: card.value,
+        options: discardOptions,
+      };
       game.log.unshift(
-        `${game.players[playerIndex].name} active Rat ${card.value} : ${columnSize} carte(s) dans la colonne -> +${move}/${columnSize}`
+        `${game.players[playerIndex].name} doit choisir une carte visible du dessus a defausser pour son Faucheur ${card.value}.`
+      );
+      return;
+    }
+    case "blob": {
+      recordCardActivation(game, "blob");
+      const move = movePlayer(game, playerIndex, 1);
+      recordCardMovement(game, "blob", move);
+      game.log.unshift(
+        `${game.players[playerIndex].name} active Blob ${card.value} : pose libre, la colonne vaut maintenant ${card.value}, puis +${move}/1`
       );
       return;
     }
@@ -1115,6 +1199,23 @@ function sanitizeGame(game, playerId) {
         })),
       };
     }
+
+    if (game.pendingChoice.type === "faucheur_discard") {
+      pendingChoice = {
+        type: game.pendingChoice.type,
+        optional: false,
+        label: "Faucheur",
+        options: game.pendingChoice.options.map((option) => ({
+          targetPlayerIndex: option.targetPlayerIndex,
+          targetPlayerName: game.players[option.targetPlayerIndex].name,
+          columnIndex: option.columnIndex,
+          rowIndex: option.rowIndex,
+          cardValue: option.cardValue,
+          cardType: option.cardType,
+          cardLabel: option.cardLabel,
+        })),
+      };
+    }
   }
 
   const visiblePlayers = game.players.map((player) => ({
@@ -1274,6 +1375,27 @@ function expandPendingChoicesForOutcome(state, playerId, actions) {
           type: "resolve_banshee_discard",
           targetPlayerIndex: option.targetPlayerIndex,
           columnIndex: option.columnIndex,
+        },
+      ]);
+    });
+  }
+
+  if (state.pendingChoice.type === "faucheur_discard") {
+    return state.pendingChoice.options.flatMap((option) => {
+      const nextState = clone(state);
+      performAction(nextState, playerId, {
+        type: "resolve_faucheur_discard",
+        targetPlayerIndex: option.targetPlayerIndex,
+        columnIndex: option.columnIndex,
+        rowIndex: option.rowIndex,
+      });
+      return expandPendingChoicesForOutcome(nextState, playerId, [
+        ...actions,
+        {
+          type: "resolve_faucheur_discard",
+          targetPlayerIndex: option.targetPlayerIndex,
+          columnIndex: option.columnIndex,
+          rowIndex: option.rowIndex,
         },
       ]);
     });
@@ -1501,6 +1623,28 @@ function chooseBotPendingChoice(game, botIndex) {
         },
       ],
       score: target.moonCount * 10 + target.columnSize,
+    };
+  }
+
+  if (pendingChoice.type === "faucheur_discard") {
+    const target = [...pendingChoice.options].sort((a, b) => {
+      const selfPenaltyA = a.cardType === "faucheur" ? -10 : 0;
+      const selfPenaltyB = b.cardType === "faucheur" ? -10 : 0;
+      const scoreA = a.cardValue * 10 + selfPenaltyA;
+      const scoreB = b.cardValue * 10 + selfPenaltyB;
+      return scoreB - scoreA;
+    })[0];
+
+    return {
+      actions: [
+        {
+          type: "resolve_faucheur_discard",
+          targetPlayerIndex: target.targetPlayerIndex,
+          columnIndex: target.columnIndex,
+          rowIndex: target.rowIndex,
+        },
+      ],
+      score: target.cardValue * 10,
     };
   }
 
@@ -1802,6 +1946,24 @@ function performAction(game, playerId, action) {
 
     const pendingPlay = game.pendingPlay;
     resolveBansheeDiscardChoice(game, action);
+    finalizeTurnAfterResolvedPlay(
+      game,
+      playerIndex,
+      pendingPlay?.wasLeftmostCard,
+      pendingPlay?.previousPosition,
+      pendingPlay?.shouldRefillRow
+    );
+    game.pendingPlay = null;
+    return;
+  }
+
+  if (action.type === "resolve_faucheur_discard") {
+    if (!game.pendingChoice || game.pendingChoice.playerIndex !== playerIndex) {
+      throw new Error("Aucun choix Faucheur en attente.");
+    }
+
+    const pendingPlay = game.pendingPlay;
+    resolveFaucheurDiscardChoice(game, action);
     finalizeTurnAfterResolvedPlay(
       game,
       playerIndex,
