@@ -107,7 +107,8 @@ const CARD_RULES = [
   { name: "Reflet", effect: "Copie la valeur de la carte au meme niveau a gauche ou a droite. Si les deux existent, choisissez." },
   { name: "Banshee", effect: "Defausse une de vos colonnes, puis avance du nombre de lunes dans cette colonne." },
   { name: "Harpie", effect: "Avance de 1 par colonne de votre cote contenant au moins une lune." },
-  { name: "Rat", effect: "Avance de 1 par carte dans la colonne jouee, cette carte incluse." },
+  { name: "Faucheur", effect: "Defausse la carte visible du dessus d'une de vos colonnes, puis avance de 2." },
+  { name: "Blob", effect: "Peut etre pose dans n'importe quelle colonne. Avance de 1 et refixe la valeur de la colonne." },
   { name: "Momie", effect: "Avance de 2, ou de 3 si elle est jouee sur une carte face cachee." },
   { name: "Fee noire", effect: "Avance de 1, refait la rangee, puis avance de 1 par carte de valeur 0 ou 1 dans la rangee." },
 ];
@@ -161,9 +162,14 @@ const FAMILY_OPTIONS = [
     effect: "Avance de 1 par colonne de votre cote contenant au moins une lune.",
   },
   {
-    type: "rat",
-    label: "Rat",
-    effect: "Avance de 1 par carte dans la colonne jouee, cette carte incluse.",
+    type: "faucheur",
+    label: "Faucheur",
+    effect: "Defausse la carte visible du dessus d'une de vos colonnes, puis avance de 2.",
+  },
+  {
+    type: "blob",
+    label: "Blob",
+    effect: "Pose libre. Avance de 1 et refixe la valeur de la colonne.",
   },
   {
     type: "momie",
@@ -685,6 +691,8 @@ export default function App() {
                       ? "Choisissez si le Reflet copie la carte de gauche ou de droite."
                       : pendingChoice.type === "banshee_discard"
                       ? "Banshee : choisissez une colonne a defausser."
+                      : pendingChoice.type === "faucheur_discard"
+                      ? "Faucheur : choisissez une carte visible du dessus a defausser."
                       : `Case ${pendingChoice.sourceCase} : choisissez une carte a retourner, ou passez.`
                     : activePlayerBlocked
                     ? "Aucun coup possible : choisissez une colonne a defausser."
@@ -747,6 +755,36 @@ export default function App() {
                       >
                         {option.targetPlayerName} col {option.columnIndex + 1} :{" "}
                         {option.moonCount} lune(s)
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {pendingChoice?.type === "faucheur_discard" ? (
+                <div style={choicePanelStyle}>
+                  <div style={{ fontWeight: 800, marginBottom: 10 }}>
+                    Faucheur : defausser une carte visible
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {pendingChoice.options.map((option) => (
+                      <button
+                        key={`${option.targetPlayerIndex}-${option.columnIndex}-${option.rowIndex}`}
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          sendAction({
+                            type: "resolve_faucheur_discard",
+                            targetPlayerIndex: option.targetPlayerIndex,
+                            columnIndex: option.columnIndex,
+                            rowIndex: option.rowIndex,
+                          });
+                        }}
+                        style={choiceButtonStyle}
+                      >
+                        {option.targetPlayerName} col {option.columnIndex + 1} :{" "}
+                        {option.cardLabel} {option.cardValue}
                       </button>
                     ))}
                   </div>
