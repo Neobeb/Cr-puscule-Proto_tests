@@ -37,12 +37,12 @@ export const CREATURES = {
   harpie: {
     label: "Harpie",
     color: "#fecdd3",
-    icon: "H",
+    icon: "🪽",
   },
   faucheur: {
     label: "Faucheur",
     color: "#d6d3d1",
-    icon: "F",
+    icon: "☠",
   },
   blob: {
     label: "Blob",
@@ -52,7 +52,7 @@ export const CREATURES = {
   momie: {
     label: "Momie",
     color: "#fef3c7",
-    icon: "M",
+    icon: "𓂀",
   },
   fee_noire: {
     label: "Fee noire",
