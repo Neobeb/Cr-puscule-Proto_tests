@@ -39,10 +39,15 @@ export const CREATURES = {
     color: "#fecdd3",
     icon: "H",
   },
-  rat: {
-    label: "Rat",
+  faucheur: {
+    label: "Faucheur",
     color: "#d6d3d1",
-    icon: "R",
+    icon: "F",
+  },
+  blob: {
+    label: "Blob",
+    color: "#bbf7d0",
+    icon: "B",
   },
   momie: {
     label: "Momie",
