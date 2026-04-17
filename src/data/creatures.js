@@ -47,7 +47,7 @@ export const CREATURES = {
   blob: {
     label: "Blob",
     color: "#bbf7d0",
-    icon: "B",
+    icon: "🫧",
   },
   momie: {
     label: "Momie",
@@ -57,7 +57,7 @@ export const CREATURES = {
   fee_noire: {
     label: "Fee noire",
     color: "#ddd6fe",
-    icon: "F",
+    icon: "🧚",
   },
   statue: {
     label: "Statue",
