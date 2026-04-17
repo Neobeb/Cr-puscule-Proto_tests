@@ -12,8 +12,8 @@ const EFFECT_HINTS = {
   banshee: "defausse lune",
   harpie: "colonnes lune",
   rat: "taille colonne",
-  momie: "cachee +4",
-  fee_noire: "refill 0/1",
+  momie: "cachee +3",
+  fee_noire: "+1 refill 0/1",
   statue: "lune fixe",
 };
 
