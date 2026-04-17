@@ -900,7 +900,7 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       recordCardActivation(game, "momie");
       const playerColumn = game.players[playerIndex].columns[columnIndex];
       const cardBelow = playerColumn[playerColumn.length - 2] || null;
-      const requestedMove = cardBelow?.faceUp === false ? 4 : 2;
+      const requestedMove = cardBelow?.faceUp === false ? 3 : 2;
       const move = movePlayer(game, playerIndex, requestedMove);
       recordCardMovement(game, "momie", move);
       game.log.unshift(
@@ -916,10 +916,11 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       const weakCards = game.row.filter(
         (rowCard) => rowCard.faceUp !== false && rowCard.value <= 1
       ).length;
-      const move = movePlayer(game, playerIndex, weakCards);
+      const requestedMove = 1 + weakCards;
+      const move = movePlayer(game, playerIndex, requestedMove);
       recordCardMovement(game, "fee_noire", move);
       game.log.unshift(
-        `${game.players[playerIndex].name} active Fee noire ${card.value} : ${weakCards} carte(s) de valeur 0 ou 1 dans la rangee -> +${move}/${weakCards}`
+        `${game.players[playerIndex].name} active Fee noire ${card.value} : +1 puis ${weakCards} carte(s) de valeur 0 ou 1 dans la rangee -> +${move}/${requestedMove}`
       );
       return;
     }
