@@ -2,9 +2,9 @@ import CardView from "./CardView";
 import Stars from "./Stars";
 
 const COLUMN_WIDTH = 176;
-const COLUMN_CARD_AREA_MIN_HEIGHT = 170;
-const STACK_CARD_HEIGHT = 148;
-const STACK_STEP = 34;
+const COLUMN_CARD_AREA_MIN_HEIGHT = 194;
+const STACK_CARD_HEIGHT = 172;
+const STACK_STEP = 42;
 
 function getColumnValue(column) {
   for (let index = column.length - 1; index >= 0; index -= 1) {
@@ -98,7 +98,10 @@ function renderColumn(player, columnIndex, anchorToCenter = "bottom") {
           }}
         >
           {column.map((card, index) => {
-            const offset = (column.length - 1 - index) * STACK_STEP;
+            const offset =
+              anchorToCenter === "bottom"
+                ? (column.length - 1 - index) * STACK_STEP
+                : index * STACK_STEP;
 
             return (
               <div
