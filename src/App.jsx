@@ -108,6 +108,7 @@ const CARD_RULES = [
   { name: "Banshee", effect: "Defausse une de vos colonnes, puis avance du nombre de lunes dans cette colonne." },
   { name: "Blob", effect: "Peut etre pose dans n'importe quelle colonne. Avance de 1 et refixe la valeur de la colonne." },
   { name: "Momie", effect: "Avance de 2, ou de 4 si elle est jouee sur une carte face cachee." },
+  { name: "Idole", effect: "Avance de 1 par chef visible de votre cote." },
 ];
 
 const BOARD_RULES = [
@@ -162,6 +163,11 @@ const FAMILY_OPTIONS = [
     type: "momie",
     label: "Momie",
     effect: "Avance de 2, ou de 4 si elle est jouee sur une carte face cachee.",
+  },
+  {
+    type: "idole",
+    label: "Idole",
+    effect: "Avance de 1 par chef visible de votre cote.",
   },
 ];
 
