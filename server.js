@@ -23,7 +23,7 @@ const TYPE_LABELS = {
 const STANDARD_VALUES = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4];
 const PREMIUM_VALUES = [3, 3, 3, 3, 4, 4, 4, 4];
 const BLOB_VALUES = [0, 0, 0, 1, 1, 1, 1, 2, 2, 2];
-const STOP_CASES = [9];
+const STOP_CASES = [7];
 const DEFAULT_FAMILY_TYPES = [
   "sorciere",
   "vampire",
@@ -141,7 +141,7 @@ function createEmptyStats() {
     },
     caseEntries: {
       5: 0,
-      9: 0,
+      7: 0,
     },
     boardFlip: {
       prompts: 0,
@@ -220,6 +220,38 @@ function drawCards(deck, count) {
   };
 }
 
+function getRowCardCount(row) {
+  return row.filter(Boolean).length;
+}
+
+function hasAnyRowCard(row) {
+  return row.some(Boolean);
+}
+
+function normalizeRowSlots(row) {
+  const normalized = row.slice(0, 4);
+
+  while (normalized.length < 4) {
+    normalized.push(null);
+  }
+
+  return normalized;
+}
+
+function fillRowSlots(row, drawn) {
+  const normalized = normalizeRowSlots(row);
+  let drawnIndex = 0;
+
+  for (let slotIndex = 0; slotIndex < normalized.length && drawnIndex < drawn.length; slotIndex += 1) {
+    if (!normalized[slotIndex]) {
+      normalized[slotIndex] = drawn[drawnIndex];
+      drawnIndex += 1;
+    }
+  }
+
+  return normalized;
+}
+
 function getCardEffectiveValue(card) {
   if (!card) {
     return 0;
@@ -253,13 +285,13 @@ function canPlaceCardInColumn(card, column) {
 }
 
 function canPlayAnyCard(row, columns) {
-  return row.some((card) =>
+  return row.some((card) => card &&
     columns.some((column) => canPlaceCardInColumn(card, column))
   );
 }
 
 function canPlaySelectedCardFaceDown(game) {
-  return game.row.length > 0;
+  return hasAnyRowCard(game.row);
 }
 
 function countMoonsInColumn(column, baseMoons = 0) {
@@ -408,7 +440,7 @@ function resolveStarGain(game, playerIndex, reason, source = "case12") {
 }
 
 function resolveDeckExhaustedEndgame(game) {
-  if (game.winner || game.deck.length > 0 || game.row.length > 0) {
+  if (game.winner || game.deck.length > 0 || hasAnyRowCard(game.row)) {
     return false;
   }
 
@@ -581,33 +613,32 @@ function createFaucheurDiscardOptions(game, ownerPlayerIndex) {
 
 function refillCommonRow(game, sourceLabel, options = {}) {
   const stats = ensureStats(game);
-  const rowWasFull = game.row.length >= 4;
+  const rowCardCount = getRowCardCount(game.row);
+  const rowWasFull = rowCardCount >= 4;
   const replaceIfFull = Boolean(options.replaceIfFull);
 
   if (rowWasFull && !replaceIfFull) {
     return;
   }
 
-  const cardsToDraw = rowWasFull ? 4 : 4 - game.row.length;
+  const cardsToDraw = rowWasFull ? 4 : 4 - rowCardCount;
 
   if (cardsToDraw <= 0 || game.deck.length === 0) {
-    game.log.unshift(`${sourceLabel} : aucune carte disponible pour refaire la rangee.`);
     return;
   }
 
   if (rowWasFull) {
-    game.row = [];
+    game.row = [null, null, null, null];
     stats.rowReplacements += 1;
   }
 
   const { drawn, remaining } = drawCards(game.deck, Math.min(cardsToDraw, game.deck.length));
 
   if (!drawn.length) {
-    game.log.unshift(`${sourceLabel} : aucune carte disponible pour refaire la rangee.`);
     return;
   }
 
-  game.row.push(...drawn);
+  game.row = fillRowSlots(game.row, drawn);
   game.deck = remaining;
   stats.rowRefills += 1;
   game.log.unshift(
@@ -621,38 +652,9 @@ function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = 
   const player = game.players[playerIndex];
   const skippedCase = options.skipBoardCase ?? null;
 
-  if (
-    player.position === 5 &&
-    previousPosition !== 5 &&
-    skippedCase !== 5
-  ) {
-    ensureStats(game).caseEntries[5] += 1;
-    const flipOptions = createFlipOptions(game);
-
-    if (!flipOptions.length) {
-      game.log.unshift(
-        `${player.name} atteint la case 5, mais aucune carte n'est disponible a retourner.`
-      );
-      return;
-    }
-
-    game.pendingChoice = {
-      type: "board_flip",
-      playerIndex,
-      optional: true,
-      sourceCase: 5,
-      options: flipOptions,
-    };
-    ensureStats(game).boardFlip.prompts += 1;
-    game.log.unshift(
-      `${player.name} atteint la case 5 et peut retourner une carte, chez lui ou chez l'adversaire.`
-    );
-    return;
-  }
-
-  if (player.position === 9 && previousPosition !== 9) {
-    ensureStats(game).caseEntries[9] += 1;
-    game.log.unshift(`${player.name} s'arrete sur la case stop 9.`);
+  if (player.position === 7 && previousPosition !== 7 && skippedCase !== 7) {
+    ensureStats(game).caseEntries[7] += 1;
+    game.log.unshift(`${player.name} s'arrete sur la case stop 7.`);
   }
 }
 
@@ -975,7 +977,7 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       recordCardActivation(game, "momie");
       const playerColumn = game.players[playerIndex].columns[columnIndex];
       const cardBelow = playerColumn[playerColumn.length - 2] || null;
-      const requestedMove = cardBelow?.faceUp === false ? 4 : 2;
+      const requestedMove = cardBelow?.faceUp === false ? 4 : 1;
       const move = movePlayer(game, playerIndex, requestedMove);
       recordCardMovement(game, "momie", move);
       game.log.unshift(
@@ -999,7 +1001,7 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
         replaceIfFull: true,
       });
       const weakCards = game.row.filter(
-        (rowCard) => rowCard.faceUp !== false && rowCard.value <= 1
+        (rowCard) => rowCard && rowCard.faceUp !== false && rowCard.value <= 1
       ).length;
       const requestedMove = 1 + weakCards;
       const move = movePlayer(game, playerIndex, requestedMove);
@@ -1068,6 +1070,7 @@ function createInitialState(hostName, options = {}) {
         botDifficulty: difficulty,
       })
     : createPlayer("En attente");
+  playerTwo.position = hasBot ? 1 : 0;
 
   return {
     id: generateId(6),
@@ -1083,7 +1086,7 @@ function createInitialState(hostName, options = {}) {
     pendingPlay: null,
     familyTypes,
     deck: remaining,
-    row: drawn,
+    row: fillRowSlots([null, null, null, null], drawn),
     players: [playerOne, playerTwo],
     log: [
       hasBot
@@ -1108,13 +1111,13 @@ function resetGameState(existingGame) {
   existingGame.pendingPlay = null;
   existingGame.familyTypes = familyTypes;
   existingGame.deck = remaining;
-  existingGame.row = drawn;
+  existingGame.row = fillRowSlots([null, null, null, null], drawn);
   existingGame.updatedAt = Date.now();
   existingGame.log = ["Nouvelle partie."];
   existingGame.stats = createEmptyStats();
 
   existingGame.players.forEach((player, index) => {
-    player.position = 0;
+    player.position = index === 1 ? 1 : 0;
     player.stars = 0;
     player.columns = createStartingColumns();
     player.columnMoons = [0, 0, 0, 0];
@@ -1131,9 +1134,11 @@ function createBotVsBotState(difficultyA = 0, difficultyB = 0) {
     isBot: true,
     botDifficulty: difficultyA,
   });
+  game.players[0].position = 0;
   game.players[1].name = "IA B";
   game.players[1].isBot = true;
   game.players[1].botDifficulty = difficultyB;
+  game.players[1].position = 1;
   game.phase = "playing";
   game.mode = "bot";
   game.stats = createEmptyStats();
@@ -1443,6 +1448,10 @@ function getLegalTurnOutcomes(game, playerIndex) {
   }
 
   game.row.forEach((card, cardIndex) => {
+    if (!card) {
+      return;
+    }
+
     player.columns.forEach((column, columnIndex) => {
       if (!canPlaceCardInColumn(card, column)) {
         return;
@@ -1818,7 +1827,7 @@ function finalizeTurnAfterResolvedPlay(
     }
   }
 
-  if (wasLeftmostCard || shouldRefillRow) {
+  if (hasAnyRowCard(game.row) || game.deck.length > 0 || shouldRefillRow || wasLeftmostCard) {
     refillCommonRow(game, "Refill");
   }
 
@@ -1846,12 +1855,12 @@ function ensureRowAvailable(game) {
     return;
   }
 
-  if (game.row.length > 0 || game.deck.length === 0) {
+  if (hasAnyRowCard(game.row) || game.deck.length === 0) {
     return;
   }
 
   const { drawn, remaining } = drawCards(game.deck, Math.min(4, game.deck.length));
-  game.row = drawn;
+  game.row = fillRowSlots([null, null, null, null], drawn);
   game.deck = remaining;
   game.log.unshift(`Securite : la rangee etait vide, ${drawn.length} carte(s) ont ete ajoutee(s).`);
 }
@@ -2030,7 +2039,7 @@ function performAction(game, playerId, action) {
     const previousPosition = player.position;
 
     targetColumn.push(card);
-    game.row.splice(cardIndex, 1);
+    game.row[cardIndex] = null;
     game.log.unshift(
       `${player.name} joue ${getTypeLabel(card.type)} ${card.value} dans sa colonne ${columnIndex + 1}`
     );
@@ -2085,7 +2094,7 @@ function performAction(game, playerId, action) {
     };
 
     targetColumn.push(hiddenCard);
-    game.row.splice(cardIndex, 1);
+    game.row[cardIndex] = null;
     game.selectedCardIndex = null;
     game.log.unshift(
       `${player.name} joue ${getTypeLabel(selectedCard.type)} ${selectedCard.value} face cachee dans sa colonne ${columnIndex + 1}`
@@ -2259,6 +2268,7 @@ function handleApi(req, res, url) {
 
         secondPlayer.name = normalizeName(body.playerName, "Joueur 2");
         secondPlayer.id = crypto.randomUUID();
+        secondPlayer.position = 1;
         entry.state.phase = "playing";
         entry.state.updatedAt = Date.now();
         entry.state.log.unshift(`${secondPlayer.name} a rejoint la partie.`);
