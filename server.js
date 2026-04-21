@@ -16,6 +16,7 @@ const TYPE_LABELS = {
   banshee: "Banshee",
   blob: "Blob",
   momie: "Momie",
+  idole: "Idole",
   statue: "Statue",
 };
 
@@ -33,6 +34,7 @@ const DEFAULT_FAMILY_TYPES = [
   "banshee",
   "blob",
   "momie",
+  "idole",
 ];
 
 function createCardSet(type, values, options = {}) {
@@ -78,6 +80,9 @@ const CARD_SETS = {
   }),
   momie: createCardSet("momie", STANDARD_VALUES, {
     moonIndexes: [7],
+  }),
+  idole: createCardSet("idole", PREMIUM_VALUES, {
+    chiefIndexes: [6],
   }),
 };
 
@@ -975,6 +980,16 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       recordCardMovement(game, "momie", move);
       game.log.unshift(
         `${game.players[playerIndex].name} active Momie ${card.value} : ${cardBelow?.faceUp === false ? "sur carte cachee" : "sans carte cachee dessous"} -> +${move}/${requestedMove}`
+      );
+      return;
+    }
+    case "idole": {
+      recordCardActivation(game, "idole");
+      const chiefCount = countChiefsOnPlayerBoard(game, playerIndex);
+      const move = movePlayer(game, playerIndex, chiefCount);
+      recordCardMovement(game, "idole", move);
+      game.log.unshift(
+        `${game.players[playerIndex].name} active Idole ${card.value} : ${chiefCount} chef(s) visible(s) de son cote -> +${move}/${chiefCount}`
       );
       return;
     }
