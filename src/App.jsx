@@ -99,6 +99,7 @@ function Panel({ title, children }) {
 const CARD_RULES = [
   { name: "Face cachee", effect: "Une carte de la rangee peut etre jouee face cachee dans n'importe quelle colonne. Elle n'a aucune valeur, compte comme une lune, et avance de 1." },
   { name: "Statue", effect: "Chaque joueur commence avec une Statue 2 avec lune dans sa deuxieme colonne." },
+  { name: "Depart", effect: "Le joueur 2 commence avec 1 case d'avance, seulement au debut de la partie." },
   { name: "Sorciere", effect: "Avance de 3 si votre pion est dans la zone de la colonne jouee." },
   { name: "Vampire", effect: "Copie la valeur de la carte du dessus dans la colonne adverse correspondante." },
   { name: "Squelette", effect: "Avance de 1 puis rejoue s'il est pose sur une lune ou sur une carte lune." },
@@ -107,13 +108,13 @@ const CARD_RULES = [
   { name: "Reflet", effect: "Copie la valeur de la carte au meme niveau a gauche ou a droite. Si les deux existent, choisissez." },
   { name: "Banshee", effect: "Defausse une de vos colonnes, puis avance du nombre de lunes dans cette colonne." },
   { name: "Blob", effect: "Peut etre pose dans n'importe quelle colonne. Avance de 1 et refixe la valeur de la colonne." },
-  { name: "Momie", effect: "Avance de 2, ou de 4 si elle est jouee sur une carte face cachee." },
+  { name: "Momie", effect: "Avance de 1, ou de 4 si elle est jouee sur une carte face cachee." },
   { name: "Idole", effect: "Avance de 1 par chef visible de votre cote." },
 ];
 
 const BOARD_RULES = [
-  { name: "Case 5", effect: "Vous pouvez retourner la derniere carte visible d'une colonne, chez vous ou chez l'adversaire." },
-  { name: "Case 9", effect: "Stop : si un deplacement atteint ou depasse cette case, le pion s'y arrete." },
+  { name: "Case 5", effect: "Aucun effet pour l'instant." },
+  { name: "Case 7", effect: "Stop : si un deplacement atteint ou depasse cette case, le pion s'y arrete." },
   { name: "Chefs", effect: "Apres une etoile, les deux pions reviennent a 0 puis avancent du nombre de chefs poses de chaque cote." },
   { name: "Etoile", effect: "Quand une etoile est gagnee, la rangee commune est automatiquement refaite." },
 ];
@@ -162,7 +163,7 @@ const FAMILY_OPTIONS = [
   {
     type: "momie",
     label: "Momie",
-    effect: "Avance de 2, ou de 4 si elle est jouee sur une carte face cachee.",
+    effect: "Avance de 1, ou de 4 si elle est jouee sur une carte face cachee.",
   },
   {
     type: "idole",
