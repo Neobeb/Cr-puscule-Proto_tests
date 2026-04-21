@@ -54,6 +54,11 @@ export const CREATURES = {
     color: "#fef3c7",
     icon: "𓂀",
   },
+  idole: {
+    label: "Idole",
+    color: "#fdba74",
+    icon: "🪬",
+  },
   fee_noire: {
     label: "Fee noire",
     color: "#ddd6fe",
