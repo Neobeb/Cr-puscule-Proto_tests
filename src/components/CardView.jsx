@@ -10,11 +10,8 @@ const EFFECT_HINTS = {
   zombie: "+1/+2/+4/+6/⭐",
   reflet: "meme niveau",
   banshee: "defausse lune",
-  harpie: "colonnes lune",
-  faucheur: "defausse +2",
   blob: "pose libre",
-  momie: "cachee +3",
-  fee_noire: "+1 refill 0/1",
+  momie: "cachee +4",
   statue: "lune fixe",
 };
 const EFFECT_TEXTS = {
@@ -25,11 +22,8 @@ const EFFECT_TEXTS = {
   zombie: "+1/+2/+4/+6/⭐",
   reflet: "Copiez la valeur a gauche ou a droite au meme niveau.",
   banshee: "Defaussez une de vos colonnes, puis avancez par lune.",
-  harpie: "Avancez de 1 par colonne avec au moins une lune.",
-  faucheur: "Defaussez une carte visible du dessus, puis +2.",
   blob: "Pose libre. +1. Refixe la valeur.",
-  momie: "Avancez de 2, ou de 3 sur une carte cachee.",
-  fee_noire: "+1, refaites la rangee, puis +1 par valeur 0 ou 1.",
+  momie: "Avancez de 2, ou de 4 sur une carte cachee.",
   statue: "Carte de depart avec une lune.",
 };
 
