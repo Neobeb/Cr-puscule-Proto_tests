@@ -14,11 +14,8 @@ const TYPE_LABELS = {
   zombie: "Zombie",
   reflet: "Reflet",
   banshee: "Banshee",
-  harpie: "Harpie",
-  faucheur: "Faucheur",
   blob: "Blob",
   momie: "Momie",
-  fee_noire: "Fee noire",
   statue: "Statue",
 };
 
@@ -33,11 +30,8 @@ const DEFAULT_FAMILY_TYPES = [
   "zombie",
   "reflet",
   "banshee",
-  "harpie",
-  "faucheur",
   "blob",
   "momie",
-  "fee_noire",
 ];
 
 function createCardSet(type, values, options = {}) {
@@ -78,21 +72,11 @@ const CARD_SETS = {
     chiefIndexes: [6, 7],
   }),
   banshee: createCardSet("banshee", STANDARD_VALUES),
-  harpie: createCardSet("harpie", STANDARD_VALUES, {
-    moonIndexes: [6],
-  }),
-  faucheur: createCardSet("faucheur", STANDARD_VALUES, {
-    moonIndexes: [4],
-  }),
   blob: createCardSet("blob", STANDARD_VALUES, {
     moonIndexes: [6],
   }),
   momie: createCardSet("momie", STANDARD_VALUES, {
     moonIndexes: [7],
-  }),
-  fee_noire: createCardSet("fee_noire", STANDARD_VALUES, {
-    moonIndexes: [5],
-    chiefIndexes: [9],
   }),
 };
 
@@ -519,24 +503,25 @@ function resolveRefletChoice(game, direction) {
   game.pendingChoice = null;
 }
 
-function createFlipOptions(game, playerIndex) {
+function createFlipOptions(game) {
   const options = [];
-  const player = game.players[playerIndex];
 
-  player.columns.forEach((column, columnIndex) => {
-    const visibleEntry = getLastVisibleCardEntry(column);
+  game.players.forEach((player, targetPlayerIndex) => {
+    player.columns.forEach((column, columnIndex) => {
+      const visibleEntry = getLastVisibleCardEntry(column);
 
-    if (!visibleEntry) {
-      return;
-    }
+      if (!visibleEntry) {
+        return;
+      }
 
-    options.push({
-      targetPlayerIndex: playerIndex,
-      columnIndex,
-      rowIndex: visibleEntry.rowIndex,
-      cardType: visibleEntry.card.type,
-      cardValue: getCardEffectiveValue(visibleEntry.card),
-      faceUp: true,
+      options.push({
+        targetPlayerIndex,
+        columnIndex,
+        rowIndex: visibleEntry.rowIndex,
+        cardType: visibleEntry.card.type,
+        cardValue: getCardEffectiveValue(visibleEntry.card),
+        faceUp: true,
+      });
     });
   });
 
@@ -636,11 +621,11 @@ function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = 
     skippedCase !== 5
   ) {
     ensureStats(game).caseEntries[5] += 1;
-    const flipOptions = createFlipOptions(game, playerIndex);
+    const flipOptions = createFlipOptions(game);
 
     if (!flipOptions.length) {
       game.log.unshift(
-        `${player.name} atteint la case 5, mais aucune de ses cartes n'est disponible a retourner.`
+        `${player.name} atteint la case 5, mais aucune carte n'est disponible a retourner.`
       );
       return;
     }
@@ -654,7 +639,7 @@ function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = 
     };
     ensureStats(game).boardFlip.prompts += 1;
     game.log.unshift(
-      `${player.name} atteint la case 5 et peut retourner une de ses cartes.`
+      `${player.name} atteint la case 5 et peut retourner une carte, chez lui ou chez l'adversaire.`
     );
     return;
   }
@@ -984,7 +969,7 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       recordCardActivation(game, "momie");
       const playerColumn = game.players[playerIndex].columns[columnIndex];
       const cardBelow = playerColumn[playerColumn.length - 2] || null;
-      const requestedMove = cardBelow?.faceUp === false ? 3 : 2;
+      const requestedMove = cardBelow?.faceUp === false ? 4 : 2;
       const move = movePlayer(game, playerIndex, requestedMove);
       recordCardMovement(game, "momie", move);
       game.log.unshift(
