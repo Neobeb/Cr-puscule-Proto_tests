@@ -12,6 +12,7 @@ const EFFECT_HINTS = {
   banshee: "defausse lune",
   blob: "pose libre",
   momie: "cachee +4",
+  idole: "chefs visibles",
   statue: "lune fixe",
 };
 const EFFECT_TEXTS = {
@@ -24,6 +25,7 @@ const EFFECT_TEXTS = {
   banshee: "Defaussez une de vos colonnes, puis avancez par lune.",
   blob: "Pose libre. +1. Refixe la valeur.",
   momie: "Avancez de 2, ou de 4 sur une carte cachee.",
+  idole: "Avancez de 1 par chef visible de votre cote.",
   statue: "Carte de depart avec une lune.",
 };
 
