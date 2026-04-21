@@ -135,8 +135,7 @@ function getZoneIndexFromPosition(position) {
 }
 
 function getCellEffect(value) {
-  if (value === 5) return "Retourner";
-  if (value === 9) return "Stop";
+  if (value === 7) return "Stop";
   return "";
 }
 
@@ -312,9 +311,9 @@ export default function GameBoard({
 }) {
   const zones = [
     { start: 0, end: 2, label: "Zone 1", effectText: "" },
-    { start: 3, end: 5, label: "Zone 2", effectText: "Case 5 : retourner" },
-    { start: 6, end: 8, label: "Zone 3", effectText: "" },
-    { start: 9, end: 11, label: "Zone 4", effectText: "Case 9 : stop" },
+    { start: 3, end: 5, label: "Zone 2", effectText: "" },
+    { start: 6, end: 8, label: "Zone 3", effectText: "Case 7 : stop" },
+    { start: 9, end: 11, label: "Zone 4", effectText: "" },
   ];
 
   return (

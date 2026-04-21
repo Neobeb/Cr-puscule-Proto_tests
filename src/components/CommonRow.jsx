@@ -11,6 +11,29 @@ export default function CommonRow({
       {row.map((card, index) => {
         const isSelected = selectedCardIndex === index;
 
+        if (!card) {
+          return (
+            <div
+              key={`empty-slot-${index}`}
+              style={{
+                width: 112,
+                height: 172,
+                borderRadius: 14,
+                border: "1px dashed rgba(100,116,139,0.45)",
+                background: "rgba(241,245,249,0.7)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#64748b",
+                fontSize: 12,
+                fontWeight: 700,
+              }}
+            >
+              Emplacement {index + 1}
+            </div>
+          );
+        }
+
         return (
           <button
             key={card.id}
