@@ -1827,7 +1827,7 @@ function finalizeTurnAfterResolvedPlay(
     }
   }
 
-  if (hasAnyRowCard(game.row) || game.deck.length > 0 || shouldRefillRow || wasLeftmostCard) {
+  if (wasLeftmostCard || shouldRefillRow) {
     refillCommonRow(game, "Refill");
   }
 
