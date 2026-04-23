@@ -424,7 +424,7 @@ function resolveStarGain(game, playerIndex, reason, source = "case12") {
     return;
   }
 
-  refillCommonRow(game, `Etoile gagnee par ${player.name}`, { replaceIfFull: true });
+  refillCommonRow(game, `Etoile gagnee par ${player.name}`);
 
   game.players[0].position = 0;
   game.players[1].position = 0;
