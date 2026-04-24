@@ -360,6 +360,12 @@ export default function App() {
   const viewerCanAct = Boolean(game?.viewerCanAct);
   const activePlayerBlocked = Boolean(game?.activePlayerBlocked);
   const pendingChoice = game?.pendingChoice || null;
+  const isCase5DiscardChoice =
+    pendingChoice?.type === "banshee_discard" &&
+    (pendingChoice?.sourceCase === 5 || pendingChoice?.boardOnly);
+  const isOptionalBansheeChoice =
+    pendingChoice?.type === "banshee_discard" &&
+    (pendingChoice?.optional || isCase5DiscardChoice);
   const selectedCard =
     game && game.selectedCardIndex !== null ? game.row[game.selectedCardIndex] : null;
   const selectedCardLabel = selectedCard
@@ -679,7 +685,9 @@ export default function App() {
                     ? pendingChoice.type === "reflet"
                       ? "Choisissez si le Reflet copie la carte de gauche ou de droite."
                       : pendingChoice.type === "banshee_discard"
-                      ? "Banshee : choisissez une colonne a defausser."
+                      ? isCase5DiscardChoice
+                        ? "Case 5 : choisissez une colonne a defausser, ou passez."
+                        : "Banshee : choisissez une colonne a defausser."
                       : pendingChoice.type === "faucheur_discard"
                       ? "Faucheur : choisissez une carte visible du dessus a defausser."
                       : `Case ${pendingChoice.sourceCase} : choisissez une carte a retourner, ou passez.`
@@ -724,9 +732,9 @@ export default function App() {
               {pendingChoice?.type === "banshee_discard" ? (
                 <div style={choicePanelStyle}>
                   <div style={{ fontWeight: 800, marginBottom: 10 }}>
-                    Banshee : defausser une colonne
+                    {(isCase5DiscardChoice ? "Case 5" : pendingChoice.label) || "Banshee"} : defausser une colonne
                   </div>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: isOptionalBansheeChoice ? 10 : 0 }}>
                     {pendingChoice.options.map((option) => (
                       <button
                         key={`${option.targetPlayerIndex}-${option.columnIndex}`}
@@ -747,6 +755,22 @@ export default function App() {
                       </button>
                     ))}
                   </div>
+                  {isOptionalBansheeChoice ? (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        sendAction({
+                          type: "resolve_banshee_discard",
+                          skip: true,
+                        });
+                      }}
+                      style={secondaryChoiceButtonStyle}
+                    >
+                      Ne rien defausser
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
 
