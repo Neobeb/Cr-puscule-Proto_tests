@@ -106,14 +106,14 @@ const CARD_RULES = [
   { name: "Loup", effect: "Avance de 2 par lune presente dans la colonne adverse correspondante." },
   { name: "Zombie", effect: "Avance selon votre nombre total de zombies. Tous les zombies sont des chefs. +1/+2/+4/+6/⭐" },
   { name: "Reflet", effect: "Copie la valeur de la carte au meme niveau a gauche ou a droite. Si les deux existent, choisissez." },
-  { name: "Banshee", effect: "Defausse une de vos colonnes, puis avance du nombre de lunes dans cette colonne." },
+  { name: "Banshee", effect: "Avance de 1 par carte retournee de votre cote." },
   { name: "Blob", effect: "Avance de 1 puis vous pouvez retourner une carte visible, chez vous ou chez l'adversaire." },
   { name: "Momie", effect: "Avance de 1, ou de 4 si elle est jouee sur une carte face cachee." },
   { name: "Idole", effect: "Avance de 1 par chef visible de votre cote." },
 ];
 
 const BOARD_RULES = [
-  { name: "Case 5", effect: "Defaussez une de vos colonnes." },
+  { name: "Remove", effect: "Vous pouvez defausser une de vos colonnes." },
   { name: "Case 7", effect: "Stop : si un deplacement atteint ou depasse cette case, le pion s'y arrete." },
   { name: "Chefs", effect: "Apres une etoile, les deux pions reviennent a 0 puis avancent du nombre de chefs poses de chaque cote." },
   { name: "Etoile", effect: "Quand une etoile est gagnee, la rangee commune est automatiquement refaite." },
@@ -153,7 +153,7 @@ const FAMILY_OPTIONS = [
   {
     type: "banshee",
     label: "Banshee",
-    effect: "Defausse une de vos colonnes, puis avance du nombre de lunes dedans.",
+    effect: "Avance de 1 par carte retournee de votre cote.",
   },
   {
     type: "blob",
@@ -687,7 +687,7 @@ export default function App() {
                       : pendingChoice.type === "banshee_discard"
                       ? isCase5DiscardChoice
                         ? "Case 5 : choisissez une colonne a defausser, ou passez."
-                        : "Banshee : choisissez une colonne a defausser."
+                        : "Banshee : avancez de 1 par carte retournee de votre cote."
                       : pendingChoice.type === "faucheur_discard"
                       ? "Faucheur : choisissez une carte visible du dessus a defausser."
                       : `Case ${pendingChoice.sourceCase} : choisissez une carte a retourner, ou passez.`
@@ -732,7 +732,7 @@ export default function App() {
               {pendingChoice?.type === "banshee_discard" ? (
                 <div style={choicePanelStyle}>
                   <div style={{ fontWeight: 800, marginBottom: 10 }}>
-                    {(isCase5DiscardChoice ? "Case 5" : pendingChoice.label) || "Banshee"} : defausser une colonne
+                    {(isCase5DiscardChoice ? "Remove" : pendingChoice.label) || "Banshee"} : defausser une colonne
                   </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: isOptionalBansheeChoice ? 10 : 0 }}>
                     {pendingChoice.options.map((option) => (
