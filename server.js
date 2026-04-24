@@ -652,6 +652,32 @@ function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = 
   const player = game.players[playerIndex];
   const skippedCase = options.skipBoardCase ?? null;
 
+  if (player.position === 5 && previousPosition !== 5 && skippedCase !== 5) {
+    ensureStats(game).caseEntries[5] += 1;
+    const discardOptions = createDiscardColumnOptions(game, playerIndex);
+
+    if (!discardOptions.length) {
+      game.log.unshift(
+        `${player.name} atteint la case 5, mais aucune colonne n'est disponible pour l'action Banshee.`
+      );
+      return;
+    }
+
+    game.pendingChoice = {
+      type: "banshee_discard",
+      playerIndex,
+      optional: false,
+      sourceCase: 5,
+      label: "Case 5",
+      cardValue: null,
+      options: discardOptions,
+    };
+    game.log.unshift(
+      `${player.name} atteint la case 5 et doit choisir une colonne a defausser.`
+    );
+    return;
+  }
+
   if (player.position === 7 && previousPosition !== 7 && skippedCase !== 7) {
     ensureStats(game).caseEntries[7] += 1;
     game.log.unshift(`${player.name} s'arrete sur la case stop 7.`);
@@ -968,8 +994,26 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       recordCardActivation(game, "blob");
       const move = movePlayer(game, playerIndex, 1);
       recordCardMovement(game, "blob", move);
+      const flipOptions = createFlipOptions(game);
+
+      if (!flipOptions.length) {
+        game.log.unshift(
+          `${game.players[playerIndex].name} active Blob ${card.value} : +${move}/1, aucune carte visible a retourner`
+        );
+        return;
+      }
+
+      game.pendingChoice = {
+        type: "board_flip",
+        playerIndex,
+        optional: true,
+        sourceCase: null,
+        label: "Blob",
+        options: flipOptions,
+      };
+      ensureStats(game).boardFlip.prompts += 1;
       game.log.unshift(
-        `${game.players[playerIndex].name} active Blob ${card.value} : pose libre, la colonne vaut maintenant ${card.value}, puis +${move}/1`
+        `${game.players[playerIndex].name} active Blob ${card.value} : +${move}/1 puis peut retourner une carte visible`
       );
       return;
     }
@@ -1175,7 +1219,7 @@ function sanitizeGame(game, playerId) {
     if (game.pendingChoice.type === "board_flip") {
       pendingChoice = {
         type: game.pendingChoice.type,
-        optional: true,
+        optional: Boolean(game.pendingChoice.optional),
         sourceCase: game.pendingChoice.sourceCase,
         label: game.pendingChoice.label || `Case ${game.pendingChoice.sourceCase}`,
         options: game.pendingChoice.options.map((option) => ({
@@ -1194,8 +1238,9 @@ function sanitizeGame(game, playerId) {
     if (game.pendingChoice.type === "banshee_discard") {
       pendingChoice = {
         type: game.pendingChoice.type,
-        optional: false,
-        label: "Banshee",
+        optional: Boolean(game.pendingChoice.optional),
+        sourceCase: game.pendingChoice.sourceCase,
+        label: game.pendingChoice.label || "Banshee",
         options: game.pendingChoice.options.map((option) => ({
           targetPlayerIndex: option.targetPlayerIndex,
           targetPlayerName: game.players[option.targetPlayerIndex].name,
