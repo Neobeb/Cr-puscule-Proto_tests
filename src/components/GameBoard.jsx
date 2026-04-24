@@ -312,7 +312,7 @@ export default function GameBoard({
 }) {
   const zones = [
     { start: 0, end: 2, label: "Zone 1", effectText: "" },
-    { start: 3, end: 5, label: "Zone 2", effectText: "Case 5 : Banshee" },
+    { start: 3, end: 5, label: "Zone 2", effectText: "Case 5 : defausse" },
     { start: 6, end: 8, label: "Zone 3", effectText: "Case 7 : stop" },
     { start: 9, end: 11, label: "Zone 4", effectText: "" },
   ];
