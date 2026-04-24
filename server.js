@@ -1389,6 +1389,30 @@ function expandPendingChoicesForOutcome(state, playerId, actions) {
     return [{ actions, resultingState: state }];
   }
 
+  const playerIndex = state.players.findIndex((player) => player.id === playerId);
+
+  if (
+    playerIndex !== -1 &&
+    ["board_flip", "banshee_discard", "faucheur_discard"].includes(
+      state.pendingChoice.type
+    )
+  ) {
+    const heuristicChoice = chooseBotPendingChoice(state, playerIndex);
+
+    if (heuristicChoice?.actions?.length) {
+      const nextState = clone(state);
+
+      for (const action of heuristicChoice.actions) {
+        performAction(nextState, playerId, action);
+      }
+
+      return expandPendingChoicesForOutcome(nextState, playerId, [
+        ...actions,
+        ...heuristicChoice.actions,
+      ]);
+    }
+  }
+
   if (state.pendingChoice.type === "reflet") {
     return state.pendingChoice.options.flatMap((option) => {
       const nextState = clone(state);
@@ -1877,7 +1901,7 @@ function finalizeTurnAfterResolvedPlay(
   const pendingPlay = game.pendingPlay || null;
 
   maybeTriggerBoardEffect(game, playerIndex, previousPosition, {
-    skipBoardCase: pendingPlay?.boardFlipResolvedCase ?? null,
+    skipBoardCase: pendingPlay?.resolvedBoardCase ?? null,
   });
 
   if (game.pendingChoice) {
@@ -1889,8 +1913,8 @@ function finalizeTurnAfterResolvedPlay(
         pendingPlay?.previousPosition ?? previousPosition,
       shouldRefillRow:
         pendingPlay?.shouldRefillRow ?? Boolean(shouldRefillRow),
-      boardFlipResolvedCase:
-        pendingPlay?.boardFlipResolvedCase ?? null,
+      resolvedBoardCase:
+        pendingPlay?.resolvedBoardCase ?? null,
     };
     game.selectedCardIndex = null;
     game.updatedAt = Date.now();
@@ -2016,7 +2040,7 @@ function performAction(game, playerId, action) {
     resolveBoardFlipChoice(game, action);
     game.pendingPlay = {
       ...(pendingPlay || {}),
-      boardFlipResolvedCase: sourceCase,
+      resolvedBoardCase: sourceCase,
     };
     finalizeTurnAfterResolvedPlay(
       game,
@@ -2035,7 +2059,12 @@ function performAction(game, playerId, action) {
     }
 
     const pendingPlay = game.pendingPlay;
+    const sourceCase = game.pendingChoice.sourceCase;
     resolveBansheeDiscardChoice(game, action);
+    game.pendingPlay = {
+      ...(pendingPlay || {}),
+      resolvedBoardCase: sourceCase,
+    };
     finalizeTurnAfterResolvedPlay(
       game,
       playerIndex,
@@ -2129,7 +2158,7 @@ function performAction(game, playerId, action) {
     if (game.pendingChoice) {
       game.pendingPlay = {
         wasLeftmostCard,
-        boardFlipResolvedCase: null,
+        resolvedBoardCase: null,
         previousPosition,
         shouldRefillRow: false,
       };
@@ -2185,7 +2214,7 @@ function performAction(game, playerId, action) {
     if (game.pendingChoice) {
       game.pendingPlay = {
         wasLeftmostCard: false,
-        boardFlipResolvedCase: null,
+        resolvedBoardCase: null,
         previousPosition,
         shouldRefillRow: wasLeftmostCard,
       };
