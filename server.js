@@ -679,7 +679,7 @@ function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = 
     game.pendingChoice = {
       type: "banshee_discard",
       playerIndex,
-      optional: false,
+      optional: true,
       sourceCase: 5,
       label: "Case 5",
       cardValue: null,
@@ -751,6 +751,20 @@ function resolveBansheeDiscardChoice(game, action) {
 
   if (!pendingChoice || pendingChoice.type !== "banshee_discard") {
     throw new Error("Aucun choix Banshee en attente.");
+  }
+
+  if (action.skip) {
+    if (!pendingChoice.optional) {
+      throw new Error("Cette defausse est obligatoire.");
+    }
+
+    game.log.unshift(
+      pendingChoice.boardOnly
+        ? `${game.players[pendingChoice.playerIndex].name} choisit de ne rien defausser sur la case ${pendingChoice.sourceCase}.`
+        : `${game.players[pendingChoice.playerIndex].name} choisit de ne pas utiliser sa Banshee.`
+    );
+    game.pendingChoice = null;
+    return;
   }
 
   const option = pendingChoice.options.find(
@@ -1461,6 +1475,21 @@ function expandPendingChoicesForOutcome(state, playerId, actions) {
   }
 
   if (state.pendingChoice.type === "banshee_discard") {
+    const skipOutcomes =
+      state.pendingChoice.optional
+        ? (() => {
+            const nextState = clone(state);
+            performAction(nextState, playerId, {
+              type: "resolve_banshee_discard",
+              skip: true,
+            });
+            return expandPendingChoicesForOutcome(nextState, playerId, [
+              ...actions,
+              { type: "resolve_banshee_discard", skip: true },
+            ]);
+          })()
+        : [];
+
     return state.pendingChoice.options.flatMap((option) => {
       const nextState = clone(state);
       performAction(nextState, playerId, {
@@ -1476,7 +1505,7 @@ function expandPendingChoicesForOutcome(state, playerId, actions) {
           columnIndex: option.columnIndex,
         },
       ]);
-    });
+    }).concat(skipOutcomes);
   }
 
   if (state.pendingChoice.type === "faucheur_discard") {
