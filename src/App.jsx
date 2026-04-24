@@ -107,13 +107,13 @@ const CARD_RULES = [
   { name: "Zombie", effect: "Avance selon votre nombre total de zombies. Tous les zombies sont des chefs. +1/+2/+4/+6/⭐" },
   { name: "Reflet", effect: "Copie la valeur de la carte au meme niveau a gauche ou a droite. Si les deux existent, choisissez." },
   { name: "Banshee", effect: "Defausse une de vos colonnes, puis avance du nombre de lunes dans cette colonne." },
-  { name: "Blob", effect: "Peut etre pose dans n'importe quelle colonne. Avance de 1 et refixe la valeur de la colonne." },
+  { name: "Blob", effect: "Avance de 1 puis vous pouvez retourner une carte visible, chez vous ou chez l'adversaire." },
   { name: "Momie", effect: "Avance de 1, ou de 4 si elle est jouee sur une carte face cachee." },
   { name: "Idole", effect: "Avance de 1 par chef visible de votre cote." },
 ];
 
 const BOARD_RULES = [
-  { name: "Case 5", effect: "Aucun effet pour l'instant." },
+  { name: "Case 5", effect: "Action Banshee : defaussez une de vos colonnes puis avancez du nombre de lunes dedans." },
   { name: "Case 7", effect: "Stop : si un deplacement atteint ou depasse cette case, le pion s'y arrete." },
   { name: "Chefs", effect: "Apres une etoile, les deux pions reviennent a 0 puis avancent du nombre de chefs poses de chaque cote." },
   { name: "Etoile", effect: "Quand une etoile est gagnee, la rangee commune est automatiquement refaite." },
@@ -158,7 +158,7 @@ const FAMILY_OPTIONS = [
   {
     type: "blob",
     label: "Blob",
-    effect: "Pose libre. Avance de 1 et refixe la valeur de la colonne.",
+    effect: "Avance de 1 puis vous pouvez retourner une carte visible, chez vous ou chez l'adversaire.",
   },
   {
     type: "momie",
