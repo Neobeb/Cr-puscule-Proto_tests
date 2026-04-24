@@ -604,6 +604,13 @@ function createDiscardColumnOptions(game, ownerPlayerIndex) {
   return options;
 }
 
+function countHiddenCardsForPlayer(game, playerIndex) {
+  return game.players[playerIndex].columns.reduce(
+    (total, column) => total + column.filter((card) => card.faceUp === false).length,
+    0
+  );
+}
+
 function createFaucheurDiscardOptions(game, ownerPlayerIndex) {
   const options = [];
   const player = game.players[ownerPlayerIndex];
@@ -675,7 +682,7 @@ function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = 
 
     if (!discardOptions.length) {
       game.log.unshift(
-        `${player.name} atteint la case 5, mais aucune colonne n'est disponible pour l'action Banshee.`
+        `${player.name} atteint la case 5, mais aucune colonne n'est disponible pour l'action Remove.`
       );
       return;
     }
@@ -685,7 +692,7 @@ function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = 
       playerIndex,
       optional: true,
       sourceCase: 5,
-      label: "Case 5",
+      label: "Remove",
       cardValue: null,
       boardOnly: true,
       options: discardOptions,
@@ -982,26 +989,12 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       return;
     }
     case "banshee": {
-      const discardOptions = createDiscardColumnOptions(game, playerIndex);
-
-      if (!discardOptions.length) {
-        recordCardActivation(game, "banshee");
-        game.log.unshift(
-          `${game.players[playerIndex].name} active Banshee ${card.value} : aucune colonne a defausser`
-        );
-        return;
-      }
-
-      game.pendingChoice = {
-        type: "banshee_discard",
-        playerIndex,
-        optional: false,
-        label: "Banshee",
-        cardValue: card.value,
-        options: discardOptions,
-      };
+      recordCardActivation(game, "banshee");
+      const hiddenCardCount = countHiddenCardsForPlayer(game, playerIndex);
+      const move = movePlayer(game, playerIndex, hiddenCardCount);
+      recordCardMovement(game, "banshee", move);
       game.log.unshift(
-        `${game.players[playerIndex].name} doit choisir une colonne a defausser pour sa Banshee ${card.value}.`
+        `${game.players[playerIndex].name} active Banshee ${card.value} : ${hiddenCardCount} carte(s) retournee(s) de son cote -> +${move}/${hiddenCardCount}`
       );
       return;
     }
@@ -1283,7 +1276,7 @@ function sanitizeGame(game, playerId) {
         type: game.pendingChoice.type,
         optional: isCase5Choice ? true : Boolean(game.pendingChoice.optional),
         sourceCase: game.pendingChoice.sourceCase,
-        label: isCase5Choice ? "Case 5" : game.pendingChoice.label || "Banshee",
+        label: isCase5Choice ? "Remove" : game.pendingChoice.label || "Banshee",
         boardOnly: isCase5Choice ? true : Boolean(game.pendingChoice.boardOnly),
         options: game.pendingChoice.options.map((option) => ({
           targetPlayerIndex: option.targetPlayerIndex,
