@@ -1277,12 +1277,14 @@ function sanitizeGame(game, playerId) {
     }
 
     if (game.pendingChoice.type === "banshee_discard") {
+      const isCase5Choice =
+        game.pendingChoice.sourceCase === 5 || Boolean(game.pendingChoice.boardOnly);
       pendingChoice = {
         type: game.pendingChoice.type,
-        optional: Boolean(game.pendingChoice.optional),
+        optional: isCase5Choice ? true : Boolean(game.pendingChoice.optional),
         sourceCase: game.pendingChoice.sourceCase,
-        label: game.pendingChoice.label || "Banshee",
-        boardOnly: Boolean(game.pendingChoice.boardOnly),
+        label: isCase5Choice ? "Case 5" : game.pendingChoice.label || "Banshee",
+        boardOnly: isCase5Choice ? true : Boolean(game.pendingChoice.boardOnly),
         options: game.pendingChoice.options.map((option) => ({
           targetPlayerIndex: option.targetPlayerIndex,
           targetPlayerName: game.players[option.targetPlayerIndex].name,
