@@ -149,6 +149,10 @@ function createEmptyStats() {
     },
     rowRefills: 0,
     rowReplacements: 0,
+    hiddenCardsPlayedByPlayer: {
+      0: 0,
+      1: 0,
+    },
     cardActivations: {},
     cardMovementTotal: {},
     replaysGranted: {},
@@ -177,6 +181,10 @@ function ensureStats(game) {
   game.stats.cardActivations = game.stats.cardActivations || {};
   game.stats.cardMovementTotal = game.stats.cardMovementTotal || {};
   game.stats.replaysGranted = game.stats.replaysGranted || {};
+  game.stats.hiddenCardsPlayedByPlayer = {
+    ...defaults.hiddenCardsPlayedByPlayer,
+    ...(game.stats.hiddenCardsPlayedByPlayer || {}),
+  };
   game.stats.winners = game.stats.winners || [];
 
   return game.stats;
@@ -195,6 +203,12 @@ function recordCardMovement(game, type, amount) {
 function recordReplayGranted(game, type, amount = 1) {
   const stats = ensureStats(game);
   stats.replaysGranted[type] = (stats.replaysGranted[type] || 0) + amount;
+}
+
+function recordHiddenCardPlayed(game, playerIndex, amount = 1) {
+  const stats = ensureStats(game);
+  stats.hiddenCardsPlayedByPlayer[playerIndex] =
+    (stats.hiddenCardsPlayedByPlayer[playerIndex] || 0) + amount;
 }
 
 function createDeck(familyTypes = DEFAULT_FAMILY_TYPES) {
@@ -669,6 +683,7 @@ function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = 
       sourceCase: 5,
       label: "Case 5",
       cardValue: null,
+      boardOnly: true,
       options: discardOptions,
     };
     game.log.unshift(
@@ -756,6 +771,14 @@ function resolveBansheeDiscardChoice(game, action) {
   }
 
   targetPlayer.columns[action.columnIndex] = [];
+  if (pendingChoice.boardOnly) {
+    game.log.unshift(
+      `${game.players[pendingChoice.playerIndex].name} active la case 5 : defausse la colonne ${action.columnIndex + 1} de ${targetPlayer.name}.`
+    );
+    game.pendingChoice = null;
+    return;
+  }
+
   const move = movePlayer(game, pendingChoice.playerIndex, option.moonCount);
   recordCardActivation(game, "banshee");
   recordCardMovement(game, "banshee", move);
@@ -804,6 +827,7 @@ function resolveFaucheurDiscardChoice(game, action) {
 function applyCardEffect(game, playerIndex, card, columnIndex) {
   if (card.faceUp === false) {
     recordCardActivation(game, "carte_cachee");
+    recordHiddenCardPlayed(game, playerIndex);
     const move = movePlayer(game, playerIndex, 1);
     recordCardMovement(game, "carte_cachee", move);
     game.log.unshift(
@@ -1240,6 +1264,7 @@ function sanitizeGame(game, playerId) {
         optional: Boolean(game.pendingChoice.optional),
         sourceCase: game.pendingChoice.sourceCase,
         label: game.pendingChoice.label || "Banshee",
+        boardOnly: Boolean(game.pendingChoice.boardOnly),
         options: game.pendingChoice.options.map((option) => ({
           targetPlayerIndex: option.targetPlayerIndex,
           targetPlayerName: game.players[option.targetPlayerIndex].name,
@@ -1856,6 +1881,17 @@ function finalizeTurnAfterResolvedPlay(
   });
 
   if (game.pendingChoice) {
+    game.pendingPlay = {
+      ...(pendingPlay || {}),
+      wasLeftmostCard:
+        pendingPlay?.wasLeftmostCard ?? Boolean(wasLeftmostCard),
+      previousPosition:
+        pendingPlay?.previousPosition ?? previousPosition,
+      shouldRefillRow:
+        pendingPlay?.shouldRefillRow ?? Boolean(shouldRefillRow),
+      boardFlipResolvedCase:
+        pendingPlay?.boardFlipResolvedCase ?? null,
+    };
     game.selectedCardIndex = null;
     game.updatedAt = Date.now();
     return;
