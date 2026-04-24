@@ -113,7 +113,7 @@ const CARD_RULES = [
 ];
 
 const BOARD_RULES = [
-  { name: "Case 5", effect: "Action Banshee : defaussez une de vos colonnes puis avancez du nombre de lunes dedans." },
+  { name: "Case 5", effect: "Defaussez une de vos colonnes." },
   { name: "Case 7", effect: "Stop : si un deplacement atteint ou depasse cette case, le pion s'y arrete." },
   { name: "Chefs", effect: "Apres une etoile, les deux pions reviennent a 0 puis avancent du nombre de chefs poses de chaque cote." },
   { name: "Etoile", effect: "Quand une etoile est gagnee, la rangee commune est automatiquement refaite." },
