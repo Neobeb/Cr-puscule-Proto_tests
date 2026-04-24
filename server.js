@@ -241,6 +241,10 @@ function hasAnyRowCard(row) {
   return row.some(Boolean);
 }
 
+function shouldRefillFromFirstSlotRule(row) {
+  return !row[0] && row.slice(1).some(Boolean);
+}
+
 function normalizeRowSlots(row) {
   const normalized = row.slice(0, 4);
 
@@ -1960,7 +1964,7 @@ function finalizeTurnAfterResolvedPlay(
     }
   }
 
-  if (wasLeftmostCard || shouldRefillRow) {
+  if (wasLeftmostCard || shouldRefillRow || shouldRefillFromFirstSlotRule(game.row)) {
     refillCommonRow(game, "Refill");
   }
 
