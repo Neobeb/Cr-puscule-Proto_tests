@@ -22,7 +22,6 @@ const TYPE_LABELS = {
 
 const STANDARD_VALUES = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4];
 const PREMIUM_VALUES = [3, 3, 3, 3, 4, 4, 4, 4];
-const BLOB_VALUES = [0, 0, 0, 1, 1, 1, 1, 2, 2, 2];
 const STOP_CASES = [7];
 const DEFAULT_FAMILY_TYPES = [
   "sorciere",
@@ -75,7 +74,7 @@ const CARD_SETS = {
     chiefIndexes: [6, 7],
   }),
   banshee: createCardSet("banshee", STANDARD_VALUES),
-  blob: createCardSet("blob", BLOB_VALUES, {
+  blob: createCardSet("blob", STANDARD_VALUES, {
     moonIndexes: [6],
   }),
   momie: createCardSet("momie", STANDARD_VALUES, {
