@@ -45,7 +45,7 @@ export const cards = [
     id: `banshee-${value}`,
     type: "banshee",
     value,
-    moon: false,
+    moon: true,
     chief: false,
   })),
 ];
