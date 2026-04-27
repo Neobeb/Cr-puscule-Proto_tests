@@ -64,14 +64,14 @@ const CARD_SETS = {
   }),
   loup: createCardSet("loup", STANDARD_VALUES, {
     moonIndexes: [8],
-    chiefIndexes: [2, 3],
+    chiefIndexes: [2],
   }),
   zombie: createCardSet("zombie", STANDARD_VALUES, {
-    allChiefs: true,
+    chiefIndexes: [0, 1, 2, 3, 4, 5, 6],
   }),
   reflet: createCardSet("reflet", PREMIUM_VALUES, {
     moonIndexes: [4],
-    chiefIndexes: [6, 7],
+    chiefIndexes: [6],
   }),
   banshee: createCardSet("banshee", STANDARD_VALUES),
   blob: createCardSet("blob", STANDARD_VALUES, {
@@ -81,7 +81,7 @@ const CARD_SETS = {
     moonIndexes: [7],
   }),
   idole: createCardSet("idole", PREMIUM_VALUES, {
-    chiefIndexes: [6],
+    allChiefs: true,
   }),
 };
 
