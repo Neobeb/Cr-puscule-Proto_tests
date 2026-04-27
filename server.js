@@ -73,7 +73,9 @@ const CARD_SETS = {
     moonIndexes: [4],
     chiefIndexes: [6],
   }),
-  banshee: createCardSet("banshee", STANDARD_VALUES),
+  banshee: createCardSet("banshee", STANDARD_VALUES, {
+    moonIndexes: STANDARD_VALUES.map((_, index) => index),
+  }),
   blob: createCardSet("blob", STANDARD_VALUES, {
     moonIndexes: [6],
   }),
@@ -147,6 +149,16 @@ function createEmptyStats() {
       used: 0,
       skipped: 0,
     },
+    discards: {
+      columns: 0,
+      cards: 0,
+      bySource: {
+        remove: {
+          columns: 0,
+          cards: 0,
+        },
+      },
+    },
     rowRefills: 0,
     rowReplacements: 0,
     hiddenCardsPlayedByPlayer: {
@@ -173,6 +185,14 @@ function ensureStats(game) {
   game.stats.boardFlip = {
     ...defaults.boardFlip,
     ...(game.stats.boardFlip || game.stats.case5 || {}),
+  };
+  game.stats.discards = {
+    ...defaults.discards,
+    ...(game.stats.discards || {}),
+    bySource: {
+      ...defaults.discards.bySource,
+      ...((game.stats.discards && game.stats.discards.bySource) || {}),
+    },
   };
   game.stats.starsBySource = {
     ...defaults.starsBySource,
@@ -209,6 +229,17 @@ function recordHiddenCardPlayed(game, playerIndex, amount = 1) {
   const stats = ensureStats(game);
   stats.hiddenCardsPlayedByPlayer[playerIndex] =
     (stats.hiddenCardsPlayedByPlayer[playerIndex] || 0) + amount;
+}
+
+function recordColumnDiscard(game, source, cardCount) {
+  const stats = ensureStats(game);
+  const sourceStats = stats.discards.bySource[source] || { columns: 0, cards: 0 };
+
+  stats.discards.columns += 1;
+  stats.discards.cards += cardCount;
+  sourceStats.columns += 1;
+  sourceStats.cards += cardCount;
+  stats.discards.bySource[source] = sourceStats;
 }
 
 function createDeck(familyTypes = DEFAULT_FAMILY_TYPES) {
@@ -795,8 +826,10 @@ function resolveBansheeDiscardChoice(game, action) {
     throw new Error("Colonne introuvable.");
   }
 
+  const discardedCardCount = targetColumn.length;
   targetPlayer.columns[action.columnIndex] = [];
   if (pendingChoice.boardOnly) {
+    recordColumnDiscard(game, "remove", discardedCardCount);
     game.log.unshift(
       `${game.players[pendingChoice.playerIndex].name} active la case 5 : defausse la colonne ${action.columnIndex + 1} de ${targetPlayer.name}.`
     );
