@@ -1,51 +1,53 @@
+const STANDARD_VALUES = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4];
+const PREMIUM_VALUES = [3, 3, 3, 3, 4, 4, 4, 4, 3, 4];
+
+function createCardSet(type, values, options = {}) {
+  const moonIndexes = new Set(options.moonIndexes || []);
+  const chiefIndexes = new Set(options.chiefIndexes || []);
+  const allChiefs = Boolean(options.allChiefs);
+
+  return values.map((value, index) => ({
+    id: `${type}-${index}`,
+    type,
+    value,
+    moon: moonIndexes.has(index),
+    chief: allChiefs || chiefIndexes.has(index),
+  }));
+}
+
 export const cards = [
-  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
-    id: `sorciere-${value}`,
-    type: "sorciere",
-    value,
-    moon: value === 1,
-    chief: value === 6,
-  })),
-  ...[4, 4, 5, 5, 5, 6, 6].map((value, index) => ({
-    id: `vampire-${index}`,
-    type: "vampire",
-    value,
-    moon: value === 4,
-    chief: false,
-  })),
-  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
-    id: `squelette-${value}`,
-    type: "squelette",
-    value,
-    moon: value === 6,
-    chief: value === 0,
-  })),
-  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
-    id: `loup-${value}`,
-    type: "loup",
-    value,
-    moon: value === 5,
-    chief: value === 1 || value === 2,
-  })),
-  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
-    id: `zombie-${value}`,
-    type: "zombie",
-    value,
-    moon: false,
-    chief: true,
-  })),
-  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
-    id: `reflet-${value}`,
-    type: "reflet",
-    value,
-    moon: value === 4,
-    chief: value === 5 || value === 6,
-  })),
-  ...[0, 1, 2, 3, 4, 5, 6].map((value) => ({
-    id: `banshee-${value}`,
-    type: "banshee",
-    value,
-    moon: true,
-    chief: false,
-  })),
+  ...createCardSet("sorciere", STANDARD_VALUES, {
+    moonIndexes: [2],
+    chiefIndexes: [9],
+  }),
+  ...createCardSet("vampire", PREMIUM_VALUES, {
+    moonIndexes: [4],
+  }),
+  ...createCardSet("squelette", STANDARD_VALUES, {
+    moonIndexes: [9],
+    chiefIndexes: [0],
+  }),
+  ...createCardSet("loup", STANDARD_VALUES, {
+    moonIndexes: [8],
+    chiefIndexes: [2],
+  }),
+  ...createCardSet("zombie", STANDARD_VALUES, {
+    chiefIndexes: [0, 1, 2, 3, 4, 5, 6],
+  }),
+  ...createCardSet("reflet", PREMIUM_VALUES, {
+    moonIndexes: [4],
+    chiefIndexes: [6],
+  }),
+  ...createCardSet("banshee", STANDARD_VALUES, {
+    moonIndexes: STANDARD_VALUES.map((_, index) => index),
+  }),
+  ...createCardSet("blob", STANDARD_VALUES, {
+    moonIndexes: [6],
+  }),
+  ...createCardSet("momie", STANDARD_VALUES, {
+    moonIndexes: [7],
+  }),
+  ...createCardSet("idole", PREMIUM_VALUES, {
+    allChiefs: true,
+  }),
 ];
