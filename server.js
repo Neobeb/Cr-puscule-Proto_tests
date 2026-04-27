@@ -21,7 +21,7 @@ const TYPE_LABELS = {
 };
 
 const STANDARD_VALUES = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4];
-const PREMIUM_VALUES = [3, 3, 3, 3, 4, 4, 4, 4];
+const PREMIUM_VALUES = [3, 3, 3, 3, 4, 4, 4, 4, 3, 4];
 const STOP_CASES = [7];
 const DEFAULT_FAMILY_TYPES = [
   "sorciere",
