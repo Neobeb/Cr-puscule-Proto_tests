@@ -113,8 +113,9 @@ const CARD_RULES = [
 ];
 
 const BOARD_RULES = [
-  { name: "Remove", effect: "Vous pouvez defausser une de vos colonnes." },
-  { name: "Case 7", effect: "Stop : si un deplacement atteint ou depasse cette case, le pion s'y arrete. La Sorciere l'ignore." },
+  { name: "Case 5", effect: "Refill : comble les emplacements vides de la rangee. Si elle est deja pleine, rien ne se passe." },
+  { name: "Case 8", effect: "Stop : si un deplacement atteint ou depasse cette case, le pion s'y arrete. La Sorciere l'ignore." },
+  { name: "Case 10", effect: "Remove : vous pouvez defausser une de vos colonnes." },
   { name: "Chefs", effect: "Apres une etoile, les deux pions reviennent a 0 puis avancent du nombre de chefs poses de chaque cote." },
   { name: "Etoile", effect: "La case etoile est en 16. Quand une etoile est gagnee, la rangee commune est automatiquement refaite." },
 ];
@@ -360,12 +361,12 @@ export default function App() {
   const viewerCanAct = Boolean(game?.viewerCanAct);
   const activePlayerBlocked = Boolean(game?.activePlayerBlocked);
   const pendingChoice = game?.pendingChoice || null;
-  const isCase5DiscardChoice =
+  const isRemoveDiscardChoice =
     pendingChoice?.type === "banshee_discard" &&
-    (pendingChoice?.sourceCase === 5 || pendingChoice?.boardOnly);
+    (pendingChoice?.label === "Remove" || pendingChoice?.boardOnly);
   const isOptionalBansheeChoice =
     pendingChoice?.type === "banshee_discard" &&
-    (pendingChoice?.optional || isCase5DiscardChoice);
+    (pendingChoice?.optional || isRemoveDiscardChoice);
   const selectedCard =
     game && game.selectedCardIndex !== null ? game.row[game.selectedCardIndex] : null;
   const selectedCardLabel = selectedCard
@@ -685,8 +686,8 @@ export default function App() {
                     ? pendingChoice.type === "reflet"
                       ? "Choisissez si le Reflet copie la carte de gauche ou de droite."
                       : pendingChoice.type === "banshee_discard"
-                      ? isCase5DiscardChoice
-                        ? "Case 5 : choisissez une colonne a defausser, ou passez."
+                      ? isRemoveDiscardChoice
+                        ? `Case ${pendingChoice.sourceCase} : choisissez une colonne a defausser, ou passez.`
                         : "Banshee : carte lune, avancez de 1 par carte retournee de votre cote."
                       : pendingChoice.type === "faucheur_discard"
                       ? "Faucheur : choisissez une carte visible du dessus a defausser."
@@ -732,7 +733,7 @@ export default function App() {
               {pendingChoice?.type === "banshee_discard" ? (
                 <div style={choicePanelStyle}>
                   <div style={{ fontWeight: 800, marginBottom: 10 }}>
-                    {(isCase5DiscardChoice ? "Remove" : pendingChoice.label) || "Banshee"} : defausser une colonne
+                    {(isRemoveDiscardChoice ? "Remove" : pendingChoice.label) || "Banshee"} : defausser une colonne
                   </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: isOptionalBansheeChoice ? 10 : 0 }}>
                     {pendingChoice.options.map((option) => (
