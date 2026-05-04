@@ -22,6 +22,7 @@ const TYPE_LABELS = {
 
 const STANDARD_VALUES = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4];
 const PREMIUM_VALUES = [3, 3, 3, 3, 4, 4, 4, 4, 3, 4];
+const STAR_CASE = 16;
 const STOP_CASES = [7];
 const DEFAULT_FAMILY_TYPES = [
   "sorciere",
@@ -137,7 +138,7 @@ function createEmptyStats() {
     blockedTurns: 0,
     forcedDiscards: 0,
     starsBySource: {
-      case12: 0,
+      case16: 0,
       zombie: 0,
     },
     caseEntries: {
@@ -369,13 +370,15 @@ function applyWerewolfEffect(game, playerIndex, columnIndex) {
   return { moonCount, move, requestedMove };
 }
 
-function movePlayer(game, playerIndex, amount) {
+function movePlayer(game, playerIndex, amount, options = {}) {
   const player = game.players[playerIndex];
   const previousPosition = player.position;
   const targetPosition = previousPosition + amount;
-  const stopCase = STOP_CASES.find(
-    (value) => value > previousPosition && value <= targetPosition
-  );
+  const stopCase = options.ignoreStops
+    ? null
+    : STOP_CASES.find(
+        (value) => value > previousPosition && value <= targetPosition
+      );
 
   player.position = stopCase ?? targetPosition;
 
@@ -447,13 +450,13 @@ function getLastVisibleCardEntry(column) {
 }
 
 function getZoneIndexFromPosition(position) {
-  if (position <= 2) return 0;
-  if (position <= 5) return 1;
-  if (position <= 8) return 2;
+  if (position <= 3) return 0;
+  if (position <= 7) return 1;
+  if (position <= 11) return 2;
   return 3;
 }
 
-function resolveStarGain(game, playerIndex, reason, source = "case12") {
+function resolveStarGain(game, playerIndex, reason, source = "case16") {
   const player = game.players[playerIndex];
   const stats = ensureStats(game);
   player.stars += 1;
@@ -930,10 +933,10 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       const handZoneIndex = getZoneIndexFromPosition(playerPosition);
 
       if (columnIndex === handZoneIndex) {
-        const move = movePlayer(game, playerIndex, 3);
+        const move = movePlayer(game, playerIndex, 3, { ignoreStops: true });
         recordCardMovement(game, "sorciere", move);
         game.log.unshift(
-          `${game.players[playerIndex].name} active Sorciere ${card.value} : jouee dans sa zone -> +${move}/3`
+          `${game.players[playerIndex].name} active Sorciere ${card.value} : jouee dans sa zone, ignore les stops -> +${move}/3`
         );
       } else {
         game.log.unshift(
@@ -1982,7 +1985,7 @@ function finalizeTurnAfterResolvedPlay(
     return;
   }
 
-  if (player.position >= 12) {
+  if (player.position >= STAR_CASE) {
     resolveStarGain(game, playerIndex, "atteint la case etoile");
 
     if (game.winner) {

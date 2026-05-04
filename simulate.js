@@ -15,14 +15,20 @@ function createAggregate() {
     turnsTotal: 0,
     turnsMin: Infinity,
     turnsMax: 0,
-    starsBySource: { case12: 0, zombie: 0 },
+    starsBySource: { case16: 0, zombie: 0 },
     cardActivations: {},
     cardMovementTotal: {},
     replaysGranted: {},
-    caseEntries: { 5: 0, 9: 0 },
+    caseEntries: { 5: 0, 7: 0 },
     boardFlip: { prompts: 0, used: 0, skipped: 0 },
+    discards: {
+      columns: 0,
+      cards: 0,
+      bySource: {},
+    },
     rowRefills: 0,
     rowReplacements: 0,
+    hiddenCardsPlayedByPlayer: { 0: 0, 1: 0 },
     blockedTurns: 0,
     forcedDiscards: 0,
     winnerChiefs: 0,
@@ -89,9 +95,9 @@ function buildReport(aggregate) {
       maxTurns: aggregate.turnsMax,
     },
     stars: {
-      case12: aggregate.starsBySource.case12,
+      case16: aggregate.starsBySource.case16,
       zombie: aggregate.starsBySource.zombie,
-      averageCase12PerGame: average(aggregate.starsBySource.case12, aggregate.games),
+      averageCase16PerGame: average(aggregate.starsBySource.case16, aggregate.games),
       averageZombiePerGame: average(aggregate.starsBySource.zombie, aggregate.games),
     },
     cards: {
@@ -100,14 +106,25 @@ function buildReport(aggregate) {
       weakestByAverageMove: weakest,
     },
     board: {
-      case5FlipEntries: aggregate.caseEntries[5],
-      case9StopEntries: aggregate.caseEntries[9],
+      case5Entries: aggregate.caseEntries[5],
+      case7StopEntries: aggregate.caseEntries[7],
+      discardedColumns: aggregate.discards.columns,
+      discardedCards: aggregate.discards.cards,
+      averageDiscardedColumnsPerGame: average(aggregate.discards.columns, aggregate.games),
+      averageDiscardedCardsPerGame: average(aggregate.discards.cards, aggregate.games),
+      discardsBySource: aggregate.discards.bySource,
       rowRefillsTotal: aggregate.rowRefills,
       rowNormalRefills: aggregate.rowRefills - aggregate.rowReplacements,
       rowFullReplacements: aggregate.rowReplacements,
       boardFlipPrompts: aggregate.boardFlip.prompts,
       boardFlipUsed: aggregate.boardFlip.used,
       boardFlipSkipped: aggregate.boardFlip.skipped,
+    },
+    hiddenCards: {
+      player1Total: aggregate.hiddenCardsPlayedByPlayer[0],
+      player2Total: aggregate.hiddenCardsPlayedByPlayer[1],
+      averagePlayer1PerGame: average(aggregate.hiddenCardsPlayedByPlayer[0], aggregate.games),
+      averagePlayer2PerGame: average(aggregate.hiddenCardsPlayedByPlayer[1], aggregate.games),
     },
     blocks: {
       blockedTurns: aggregate.blockedTurns,
@@ -139,15 +156,27 @@ function simulateSeries({
     aggregate.turnsTotal += stats.turnsCompleted || 0;
     aggregate.turnsMin = Math.min(aggregate.turnsMin, stats.turnsCompleted || 0);
     aggregate.turnsMax = Math.max(aggregate.turnsMax, stats.turnsCompleted || 0);
-    aggregate.starsBySource.case12 += stats.starsBySource?.case12 || 0;
+    aggregate.starsBySource.case16 += stats.starsBySource?.case16 || stats.starsBySource?.case12 || 0;
     aggregate.starsBySource.zombie += stats.starsBySource?.zombie || 0;
     aggregate.caseEntries[5] += stats.caseEntries?.[5] || 0;
-    aggregate.caseEntries[9] += stats.caseEntries?.[9] || 0;
+    aggregate.caseEntries[7] += stats.caseEntries?.[7] || 0;
     aggregate.boardFlip.prompts += stats.boardFlip?.prompts || 0;
     aggregate.boardFlip.used += stats.boardFlip?.used || 0;
     aggregate.boardFlip.skipped += stats.boardFlip?.skipped || 0;
+    aggregate.discards.columns += stats.discards?.columns || 0;
+    aggregate.discards.cards += stats.discards?.cards || 0;
+    Object.entries(stats.discards?.bySource || {}).forEach(([source, values]) => {
+      aggregate.discards.bySource[source] = aggregate.discards.bySource[source] || {
+        columns: 0,
+        cards: 0,
+      };
+      aggregate.discards.bySource[source].columns += values.columns || 0;
+      aggregate.discards.bySource[source].cards += values.cards || 0;
+    });
     aggregate.rowRefills += stats.rowRefills || 0;
     aggregate.rowReplacements += stats.rowReplacements || 0;
+    aggregate.hiddenCardsPlayedByPlayer[0] += stats.hiddenCardsPlayedByPlayer?.[0] || 0;
+    aggregate.hiddenCardsPlayedByPlayer[1] += stats.hiddenCardsPlayedByPlayer?.[1] || 0;
     aggregate.blockedTurns += stats.blockedTurns || 0;
     aggregate.forcedDiscards += stats.forcedDiscards || 0;
     mergeCardMap(aggregate.cardActivations, stats.cardActivations || {});
