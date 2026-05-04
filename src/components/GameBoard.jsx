@@ -136,8 +136,9 @@ function getZoneIndexFromPosition(position) {
 }
 
 function getCellEffect(value) {
-  if (value === 5) return "Remove";
-  if (value === 7) return "Stop";
+  if (value === 5) return "Refill";
+  if (value === 8) return "Stop";
+  if (value === 10) return "Remove";
   return "";
 }
 
@@ -313,8 +314,8 @@ export default function GameBoard({
 }) {
   const zones = [
     { start: 0, end: 3, label: "Zone 1", effectText: "" },
-    { start: 4, end: 7, label: "Zone 2", effectText: "Case 5 : Remove / Case 7 : stop" },
-    { start: 8, end: 11, label: "Zone 3", effectText: "" },
+    { start: 4, end: 7, label: "Zone 2", effectText: "Case 5 : Refill" },
+    { start: 8, end: 11, label: "Zone 3", effectText: "Case 8 : stop / Case 10 : Remove" },
     { start: 12, end: 15, label: "Zone 4", effectText: "" },
   ];
 
