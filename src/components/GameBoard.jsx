@@ -5,6 +5,7 @@ const COLUMN_WIDTH = 176;
 const COLUMN_CARD_AREA_MIN_HEIGHT = 194;
 const STACK_CARD_HEIGHT = 172;
 const STACK_STEP = 42;
+const STAR_CASE = 16;
 
 function getColumnValue(column) {
   for (let index = column.length - 1; index >= 0; index -= 1) {
@@ -128,9 +129,9 @@ function renderColumn(player, columnIndex, anchorToCenter = "bottom") {
 
 function getZoneIndexFromPosition(position) {
   if (position < 0) return 0;
-  if (position <= 2) return 0;
-  if (position <= 5) return 1;
-  if (position <= 8) return 2;
+  if (position <= 3) return 0;
+  if (position <= 7) return 1;
+  if (position <= 11) return 2;
   return 3;
 }
 
@@ -151,7 +152,7 @@ function Zone({
 }) {
   const player1ZoneIndex = getZoneIndexFromPosition(player1Position);
   const player2ZoneIndex = getZoneIndexFromPosition(player2Position);
-  const zoneIndex = Math.floor(start / 3);
+  const zoneIndex = Math.floor(start / 4);
   const p1HandHere = player1ZoneIndex === zoneIndex;
   const p2HandHere = player2ZoneIndex === zoneIndex;
 
@@ -177,13 +178,13 @@ function Zone({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
+          gridTemplateColumns: `repeat(${end - start + 1}, 1fr)`,
           gap: 6,
           marginTop: 10,
           marginBottom: 10,
         }}
       >
-        {Array.from({ length: 3 }, (_, index) => {
+        {Array.from({ length: end - start + 1 }, (_, index) => {
           const value = start + index;
           const p1Here = player1Position === value;
           const p2Here = player2Position === value;
@@ -234,8 +235,8 @@ function Zone({
 }
 
 function StarZone({ player1Position, player2Position, animationState }) {
-  const p1Here = player1Position === 12;
-  const p2Here = player2Position === 12;
+  const p1Here = player1Position >= STAR_CASE;
+  const p2Here = player2Position >= STAR_CASE;
   const animateStar = Boolean(animationState?.starBurst);
 
   return (
@@ -256,7 +257,7 @@ function StarZone({ player1Position, player2Position, animationState }) {
         animation: animateStar ? "starBurst 900ms ease-out" : "none",
       }}
     >
-      <div style={{ fontWeight: 800, fontSize: 12, color: "#92400e" }}>Case 12</div>
+      <div style={{ fontWeight: 800, fontSize: 12, color: "#92400e" }}>Case 16</div>
       <div style={{ fontSize: 34, lineHeight: 1 }}>⭐</div>
       <div style={{ fontSize: 12, fontWeight: 700, color: "#92400e" }}>Etoile</div>
       <div style={{ fontSize: 10, color: "#78350f" }}>
@@ -311,10 +312,10 @@ export default function GameBoard({
   animationState,
 }) {
   const zones = [
-    { start: 0, end: 2, label: "Zone 1", effectText: "" },
-    { start: 3, end: 5, label: "Zone 2", effectText: "Case 5 : Remove" },
-    { start: 6, end: 8, label: "Zone 3", effectText: "Case 7 : stop" },
-    { start: 9, end: 11, label: "Zone 4", effectText: "" },
+    { start: 0, end: 3, label: "Zone 1", effectText: "" },
+    { start: 4, end: 7, label: "Zone 2", effectText: "Case 5 : Remove / Case 7 : stop" },
+    { start: 8, end: 11, label: "Zone 3", effectText: "" },
+    { start: 12, end: 15, label: "Zone 4", effectText: "" },
   ];
 
   return (

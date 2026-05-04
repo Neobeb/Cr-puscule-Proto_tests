@@ -5,12 +5,12 @@ export default function TrackBoard({ players }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(13, 50px)",
+          gridTemplateColumns: "repeat(17, 50px)",
           gap: 4,
           marginBottom: 30,
         }}
       >
-        {Array.from({ length: 13 }, (_, i) => {
+        {Array.from({ length: 17 }, (_, i) => {
           const p1Here = players[0].position === i;
           const p2Here = players[1].position === i;
 
@@ -25,7 +25,7 @@ export default function TrackBoard({ players }) {
                 justifyContent: "space-between",
                 alignItems: "center",
                 padding: 4,
-                backgroundColor: i === 12 ? "#ffe7a3" : "white",
+                backgroundColor: i === 16 ? "#ffe7a3" : "white",
               }}
             >
               <div style={{ fontSize: 12 }}>Case {i}</div>
