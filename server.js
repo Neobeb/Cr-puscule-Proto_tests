@@ -23,7 +23,9 @@ const TYPE_LABELS = {
 const STANDARD_VALUES = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4];
 const PREMIUM_VALUES = [3, 3, 3, 3, 4, 4, 4, 4, 3, 4];
 const STAR_CASE = 16;
-const STOP_CASES = [7];
+const REFILL_CASE = 5;
+const STOP_CASES = [8];
+const REMOVE_CASE = 10;
 const DEFAULT_FAMILY_TYPES = [
   "sorciere",
   "vampire",
@@ -143,7 +145,8 @@ function createEmptyStats() {
     },
     caseEntries: {
       5: 0,
-      7: 0,
+      8: 0,
+      10: 0,
     },
     boardFlip: {
       prompts: 0,
@@ -712,13 +715,19 @@ function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = 
   const player = game.players[playerIndex];
   const skippedCase = options.skipBoardCase ?? null;
 
-  if (player.position === 5 && previousPosition !== 5 && skippedCase !== 5) {
-    ensureStats(game).caseEntries[5] += 1;
+  if (player.position === REFILL_CASE && previousPosition !== REFILL_CASE && skippedCase !== REFILL_CASE) {
+    ensureStats(game).caseEntries[REFILL_CASE] += 1;
+    refillCommonRow(game, `Case ${REFILL_CASE} Refill`);
+    game.log.unshift(`${player.name} active la case ${REFILL_CASE} : refill de la rangee commune.`);
+  }
+
+  if (player.position === REMOVE_CASE && previousPosition !== REMOVE_CASE && skippedCase !== REMOVE_CASE) {
+    ensureStats(game).caseEntries[REMOVE_CASE] += 1;
     const discardOptions = createDiscardColumnOptions(game, playerIndex);
 
     if (!discardOptions.length) {
       game.log.unshift(
-        `${player.name} atteint la case 5, mais aucune colonne n'est disponible pour l'action Remove.`
+        `${player.name} atteint la case ${REMOVE_CASE}, mais aucune colonne n'est disponible pour l'action Remove.`
       );
       return;
     }
@@ -727,21 +736,21 @@ function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = 
       type: "banshee_discard",
       playerIndex,
       optional: true,
-      sourceCase: 5,
+      sourceCase: REMOVE_CASE,
       label: "Remove",
       cardValue: null,
       boardOnly: true,
       options: discardOptions,
     };
     game.log.unshift(
-      `${player.name} atteint la case 5 et doit choisir une colonne a defausser.`
+      `${player.name} atteint la case ${REMOVE_CASE} et doit choisir une colonne a defausser.`
     );
     return;
   }
 
-  if (player.position === 7 && previousPosition !== 7 && skippedCase !== 7) {
-    ensureStats(game).caseEntries[7] += 1;
-    game.log.unshift(`${player.name} s'arrete sur la case stop 7.`);
+  if (player.position === 8 && previousPosition !== 8 && skippedCase !== 8) {
+    ensureStats(game).caseEntries[8] += 1;
+    game.log.unshift(`${player.name} s'arrete sur la case stop 8.`);
   }
 }
 
@@ -1308,14 +1317,14 @@ function sanitizeGame(game, playerId) {
     }
 
     if (game.pendingChoice.type === "banshee_discard") {
-      const isCase5Choice =
-        game.pendingChoice.sourceCase === 5 || Boolean(game.pendingChoice.boardOnly);
+      const isRemoveCaseChoice =
+        game.pendingChoice.sourceCase === REMOVE_CASE || Boolean(game.pendingChoice.boardOnly);
       pendingChoice = {
         type: game.pendingChoice.type,
-        optional: isCase5Choice ? true : Boolean(game.pendingChoice.optional),
+        optional: isRemoveCaseChoice ? true : Boolean(game.pendingChoice.optional),
         sourceCase: game.pendingChoice.sourceCase,
-        label: isCase5Choice ? "Remove" : game.pendingChoice.label || "Banshee",
-        boardOnly: isCase5Choice ? true : Boolean(game.pendingChoice.boardOnly),
+        label: isRemoveCaseChoice ? "Remove" : game.pendingChoice.label || "Banshee",
+        boardOnly: isRemoveCaseChoice ? true : Boolean(game.pendingChoice.boardOnly),
         options: game.pendingChoice.options.map((option) => ({
           targetPlayerIndex: option.targetPlayerIndex,
           targetPlayerName: game.players[option.targetPlayerIndex].name,
