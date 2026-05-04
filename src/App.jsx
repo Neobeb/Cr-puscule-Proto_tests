@@ -100,13 +100,13 @@ const CARD_RULES = [
   { name: "Face cachee", effect: "Une carte de la rangee peut etre jouee face cachee dans n'importe quelle colonne. Elle n'a aucune valeur, compte comme une lune, et avance de 1." },
   { name: "Statue", effect: "Chaque joueur commence avec une Statue 2 avec lune dans sa deuxieme colonne." },
   { name: "Depart", effect: "Le joueur 2 commence avec 1 case d'avance, seulement au debut de la partie." },
-  { name: "Sorciere", effect: "Avance de 3 si votre pion est dans la zone de la colonne jouee." },
+  { name: "Sorciere", effect: "Avance de 3 si votre pion est dans la zone de la colonne jouee. Ignore les stops." },
   { name: "Vampire", effect: "Copie la valeur de la carte du dessus dans la colonne adverse correspondante." },
   { name: "Squelette", effect: "Avance de 1 puis rejoue s'il est pose sur une lune ou sur une carte lune." },
   { name: "Loup", effect: "Avance de 2 par lune presente dans la colonne adverse correspondante." },
   { name: "Zombie", effect: "Avance selon votre nombre total de zombies. Tous les zombies sont des chefs. +1/+2/+4/+6/⭐" },
   { name: "Reflet", effect: "Copie la valeur de la carte au meme niveau a gauche ou a droite. Si les deux existent, choisissez." },
-  { name: "Banshee", effect: "Avance de 1 par carte retournee de votre cote." },
+  { name: "Banshee", effect: "Toutes les Banshee ont une lune. Avance de 1 par carte retournee de votre cote." },
   { name: "Blob", effect: "Avance de 1 puis vous pouvez retourner une carte visible, chez vous ou chez l'adversaire." },
   { name: "Momie", effect: "Avance de 1, ou de 4 si elle est jouee sur une carte face cachee." },
   { name: "Idole", effect: "Avance de 1 par chef visible de votre cote." },
@@ -114,16 +114,16 @@ const CARD_RULES = [
 
 const BOARD_RULES = [
   { name: "Remove", effect: "Vous pouvez defausser une de vos colonnes." },
-  { name: "Case 7", effect: "Stop : si un deplacement atteint ou depasse cette case, le pion s'y arrete." },
+  { name: "Case 7", effect: "Stop : si un deplacement atteint ou depasse cette case, le pion s'y arrete. La Sorciere l'ignore." },
   { name: "Chefs", effect: "Apres une etoile, les deux pions reviennent a 0 puis avancent du nombre de chefs poses de chaque cote." },
-  { name: "Etoile", effect: "Quand une etoile est gagnee, la rangee commune est automatiquement refaite." },
+  { name: "Etoile", effect: "La case etoile est en 16. Quand une etoile est gagnee, la rangee commune est automatiquement refaite." },
 ];
 
 const FAMILY_OPTIONS = [
   {
     type: "sorciere",
     label: "Sorciere",
-    effect: "Avance de 3 si votre pion est dans la zone de la colonne jouee.",
+    effect: "Avance de 3 si votre pion est dans la zone de la colonne jouee. Ignore les stops.",
   },
   {
     type: "vampire",
@@ -153,7 +153,7 @@ const FAMILY_OPTIONS = [
   {
     type: "banshee",
     label: "Banshee",
-    effect: "Avance de 1 par carte retournee de votre cote.",
+    effect: "Carte lune. Avance de 1 par carte retournee de votre cote.",
   },
   {
     type: "blob",
@@ -687,7 +687,7 @@ export default function App() {
                       : pendingChoice.type === "banshee_discard"
                       ? isCase5DiscardChoice
                         ? "Case 5 : choisissez une colonne a defausser, ou passez."
-                        : "Banshee : avancez de 1 par carte retournee de votre cote."
+                        : "Banshee : carte lune, avancez de 1 par carte retournee de votre cote."
                       : pendingChoice.type === "faucheur_discard"
                       ? "Faucheur : choisissez une carte visible du dessus a defausser."
                       : `Case ${pendingChoice.sourceCase} : choisissez une carte a retourner, ou passez.`
