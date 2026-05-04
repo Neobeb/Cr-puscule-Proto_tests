@@ -488,6 +488,8 @@ function resolveStarGain(game, playerIndex, reason, source = "case16") {
   game.log.unshift(
     `Reprise apres etoile : ${game.players[0].name} avance de ${movePlayer0}/${chiefsPlayer0} grace a ses chefs, ${game.players[1].name} avance de ${movePlayer1}/${chiefsPlayer1}.`
   );
+
+  maybeTriggerBoardEffect(game, playerIndex, 0);
 }
 
 function resolveDeckExhaustedEndgame(game) {
@@ -1989,6 +1991,23 @@ function finalizeTurnAfterResolvedPlay(
     resolveStarGain(game, playerIndex, "atteint la case etoile");
 
     if (game.winner) {
+      game.selectedCardIndex = null;
+      game.updatedAt = Date.now();
+      return;
+    }
+
+    if (game.pendingChoice) {
+      game.pendingPlay = {
+        ...(pendingPlay || {}),
+        wasLeftmostCard:
+          pendingPlay?.wasLeftmostCard ?? Boolean(wasLeftmostCard),
+        previousPosition:
+          pendingPlay?.previousPosition ?? previousPosition,
+        shouldRefillRow:
+          pendingPlay?.shouldRefillRow ?? Boolean(shouldRefillRow),
+        resolvedBoardCase:
+          pendingPlay?.resolvedBoardCase ?? null,
+      };
       game.selectedCardIndex = null;
       game.updatedAt = Date.now();
       return;
