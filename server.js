@@ -20,28 +20,66 @@ const TYPE_LABELS = {
   statue: "Statue",
 };
 
-const STANDARD_VALUES = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4];
-const PREMIUM_VALUES = [3, 3, 3, 3, 4, 4, 4, 4, 3, 4];
+const FAMILY_VALUES = [0, 1, 1, 2, 2, 3, 3, 4];
 const STAR_CASE = 16;
-const REFILL_CASE = 5;
-const STOP_CASES = [8];
-const REMOVE_CASE = 10;
-const DEFAULT_FAMILY_TYPES = [
-  "sorciere",
+const BASE_FAMILY_TYPES = [
   "vampire",
+  "sorciere",
   "squelette",
+  "reflet",
   "loup",
   "zombie",
-  "reflet",
-  "banshee",
-  "blob",
   "momie",
-  "idole",
 ];
+const BOOSTER_DEFINITIONS = {
+  booster1: {
+    familyTypes: ["banshee"],
+    extraZombieValue: 1,
+  },
+  booster2: {
+    familyTypes: ["idole"],
+    extraZombieValue: 2,
+  },
+  booster3: {
+    familyTypes: ["blob"],
+    extraZombieValue: 3,
+  },
+};
+const DEFAULT_BOOSTER_IDS = [];
+const ALL_FAMILY_TYPES = [
+  ...BASE_FAMILY_TYPES,
+  ...Object.values(BOOSTER_DEFINITIONS).flatMap((booster) => booster.familyTypes),
+];
+const BOARD_TYPES = {
+  blank: {
+    label: "Plateau vierge",
+    refillCases: [],
+    stopCases: [],
+    removeCases: [],
+    opponentDestroyCases: [],
+  },
+  base: {
+    label: "Plateau base",
+    refillCases: [5],
+    stopCases: [8],
+    removeCases: [10],
+    opponentDestroyCases: [],
+  },
+  test: {
+    label: "Plateau test",
+    refillCases: [],
+    stopCases: [8],
+    removeCases: [10],
+    opponentDestroyCases: [5],
+  },
+};
+const DEFAULT_BOARD_TYPE = "base";
 
 function createCardSet(type, values, options = {}) {
-  const moonIndexes = new Set(options.moonIndexes || []);
-  const chiefIndexes = new Set(options.chiefIndexes || []);
+  const clampIndex = (index) =>
+    Math.max(0, Math.min(Number(index), values.length - 1));
+  const moonIndexes = new Set((options.moonIndexes || []).map(clampIndex));
+  const chiefIndexes = new Set((options.chiefIndexes || []).map(clampIndex));
   const allChiefs = Boolean(options.allChiefs);
 
   return values.map((value, index) => ({
@@ -54,49 +92,68 @@ function createCardSet(type, values, options = {}) {
 }
 
 const CARD_SETS = {
-  sorciere: createCardSet("sorciere", STANDARD_VALUES, {
+  sorciere: createCardSet("sorciere", FAMILY_VALUES, {
     moonIndexes: [2],
     chiefIndexes: [9],
   }),
-  vampire: createCardSet("vampire", PREMIUM_VALUES, {
+  vampire: createCardSet("vampire", FAMILY_VALUES, {
     moonIndexes: [4],
   }),
-  squelette: createCardSet("squelette", STANDARD_VALUES, {
+  squelette: createCardSet("squelette", FAMILY_VALUES, {
     moonIndexes: [9],
     chiefIndexes: [0],
   }),
-  loup: createCardSet("loup", STANDARD_VALUES, {
+  loup: createCardSet("loup", FAMILY_VALUES, {
     moonIndexes: [8],
     chiefIndexes: [2],
   }),
-  zombie: createCardSet("zombie", STANDARD_VALUES, {
+  zombie: createCardSet("zombie", FAMILY_VALUES, {
     chiefIndexes: [0, 1, 2, 3, 4, 5, 6],
   }),
-  reflet: createCardSet("reflet", PREMIUM_VALUES, {
+  reflet: createCardSet("reflet", FAMILY_VALUES, {
     moonIndexes: [4],
     chiefIndexes: [6],
   }),
-  banshee: createCardSet("banshee", STANDARD_VALUES, {
-    moonIndexes: STANDARD_VALUES.map((_, index) => index),
+  banshee: createCardSet("banshee", FAMILY_VALUES, {
+    moonIndexes: FAMILY_VALUES.map((_, index) => index),
   }),
-  blob: createCardSet("blob", STANDARD_VALUES, {
+  blob: createCardSet("blob", FAMILY_VALUES, {
     moonIndexes: [6],
   }),
-  momie: createCardSet("momie", STANDARD_VALUES, {
+  momie: createCardSet("momie", FAMILY_VALUES, {
     moonIndexes: [7],
   }),
-  idole: createCardSet("idole", PREMIUM_VALUES, {
+  idole: createCardSet("idole", FAMILY_VALUES, {
     allChiefs: true,
   }),
 };
 
 function normalizeFamilyTypes(familyTypes) {
-  const requested = Array.isArray(familyTypes) ? familyTypes : DEFAULT_FAMILY_TYPES;
+  const requested = Array.isArray(familyTypes) ? familyTypes : BASE_FAMILY_TYPES;
   const valid = requested.filter((type, index) =>
-    DEFAULT_FAMILY_TYPES.includes(type) && requested.indexOf(type) === index
+    ALL_FAMILY_TYPES.includes(type) && requested.indexOf(type) === index
   );
 
-  return valid.length ? valid : DEFAULT_FAMILY_TYPES;
+  return valid.length ? valid : BASE_FAMILY_TYPES;
+}
+
+function normalizeBoosterIds(boosterIds) {
+  const requested = Array.isArray(boosterIds) ? boosterIds : DEFAULT_BOOSTER_IDS;
+  return requested.filter(
+    (id, index) => BOOSTER_DEFINITIONS[id] && requested.indexOf(id) === index
+  );
+}
+
+function normalizeBoardType(boardType) {
+  return BOARD_TYPES[boardType] ? boardType : DEFAULT_BOARD_TYPE;
+}
+
+function getBoardConfig(gameOrBoardType) {
+  const boardType =
+    typeof gameOrBoardType === "string"
+      ? gameOrBoardType
+      : gameOrBoardType?.boardType;
+  return BOARD_TYPES[normalizeBoardType(boardType)];
 }
 
 const games = new Map();
@@ -136,6 +193,7 @@ function getTypeLabel(type) {
 
 function createEmptyStats() {
   return {
+    initialDeckSize: 0,
     turnsCompleted: 0,
     blockedTurns: 0,
     forcedDiscards: 0,
@@ -161,10 +219,25 @@ function createEmptyStats() {
           columns: 0,
           cards: 0,
         },
+        sabotage: {
+          columns: 0,
+          cards: 0,
+        },
       },
     },
     rowRefills: 0,
     rowReplacements: 0,
+    rowAppearances: {},
+    visibleCardsPlayed: {},
+    hiddenSourceCardsPlayed: {},
+    chiefsPlayed: {
+      total: 0,
+      byPlayer: {
+        0: 0,
+        1: 0,
+      },
+      byType: {},
+    },
     hiddenCardsPlayedByPlayer: {
       0: 0,
       1: 0,
@@ -202,14 +275,31 @@ function ensureStats(game) {
     ...defaults.starsBySource,
     ...(game.stats.starsBySource || {}),
   };
+  game.stats.chiefsPlayed = {
+    ...defaults.chiefsPlayed,
+    ...(game.stats.chiefsPlayed || {}),
+    byPlayer: {
+      ...defaults.chiefsPlayed.byPlayer,
+      ...((game.stats.chiefsPlayed && game.stats.chiefsPlayed.byPlayer) || {}),
+    },
+    byType: {
+      ...defaults.chiefsPlayed.byType,
+      ...((game.stats.chiefsPlayed && game.stats.chiefsPlayed.byType) || {}),
+    },
+  };
+  game.stats.rowAppearances = game.stats.rowAppearances || {};
+  game.stats.visibleCardsPlayed = game.stats.visibleCardsPlayed || {};
+  game.stats.hiddenSourceCardsPlayed = game.stats.hiddenSourceCardsPlayed || {};
   game.stats.cardActivations = game.stats.cardActivations || {};
   game.stats.cardMovementTotal = game.stats.cardMovementTotal || {};
+  game.stats.firstActivationTurn = game.stats.firstActivationTurn || {};
   game.stats.replaysGranted = game.stats.replaysGranted || {};
   game.stats.hiddenCardsPlayedByPlayer = {
     ...defaults.hiddenCardsPlayedByPlayer,
     ...(game.stats.hiddenCardsPlayedByPlayer || {}),
   };
   game.stats.winners = game.stats.winners || [];
+  game.stats.initialDeckSize = game.stats.initialDeckSize || 0;
 
   return game.stats;
 }
@@ -217,6 +307,9 @@ function ensureStats(game) {
 function recordCardActivation(game, type) {
   const stats = ensureStats(game);
   stats.cardActivations[type] = (stats.cardActivations[type] || 0) + 1;
+  if (stats.firstActivationTurn[type] === undefined) {
+    stats.firstActivationTurn[type] = (stats.turnsCompleted || 0) + 1;
+  }
 }
 
 function recordCardMovement(game, type, amount) {
@@ -235,6 +328,33 @@ function recordHiddenCardPlayed(game, playerIndex, amount = 1) {
     (stats.hiddenCardsPlayedByPlayer[playerIndex] || 0) + amount;
 }
 
+function recordChiefPlayed(game, playerIndex, cardType) {
+  const stats = ensureStats(game);
+  stats.chiefsPlayed.total += 1;
+  stats.chiefsPlayed.byPlayer[playerIndex] =
+    (stats.chiefsPlayed.byPlayer[playerIndex] || 0) + 1;
+  stats.chiefsPlayed.byType[cardType] =
+    (stats.chiefsPlayed.byType[cardType] || 0) + 1;
+}
+
+function recordRowAppearances(game, cards) {
+  const stats = ensureStats(game);
+  cards.filter(Boolean).forEach((card) => {
+    stats.rowAppearances[card.type] = (stats.rowAppearances[card.type] || 0) + 1;
+  });
+}
+
+function recordVisibleCardPlayed(game, cardType) {
+  const stats = ensureStats(game);
+  stats.visibleCardsPlayed[cardType] = (stats.visibleCardsPlayed[cardType] || 0) + 1;
+}
+
+function recordHiddenSourceCardPlayed(game, cardType) {
+  const stats = ensureStats(game);
+  stats.hiddenSourceCardsPlayed[cardType] =
+    (stats.hiddenSourceCardsPlayed[cardType] || 0) + 1;
+}
+
 function recordColumnDiscard(game, source, cardCount) {
   const stats = ensureStats(game);
   const sourceStats = stats.discards.bySource[source] || { columns: 0, cards: 0 };
@@ -246,9 +366,42 @@ function recordColumnDiscard(game, source, cardCount) {
   stats.discards.bySource[source] = sourceStats;
 }
 
-function createDeck(familyTypes = DEFAULT_FAMILY_TYPES) {
+function recordCardDiscard(game, source, cardCount = 1) {
+  const stats = ensureStats(game);
+  const sourceStats = stats.discards.bySource[source] || { columns: 0, cards: 0 };
+
+  stats.discards.cards += cardCount;
+  sourceStats.cards += cardCount;
+  stats.discards.bySource[source] = sourceStats;
+}
+
+function createExtraZombieCard(value, boosterId) {
+  return {
+    id: `zombie-${boosterId}`,
+    type: "zombie",
+    value,
+    moon: false,
+    chief: true,
+  };
+}
+
+function createDeck(familyTypes = BASE_FAMILY_TYPES, boosterIds = DEFAULT_BOOSTER_IDS) {
   const selectedFamilies = normalizeFamilyTypes(familyTypes);
-  const deck = clone(selectedFamilies.flatMap((type) => CARD_SETS[type] || []));
+  const selectedBoosters = normalizeBoosterIds(boosterIds);
+  const boosterFamilies = selectedBoosters.flatMap(
+    (boosterId) => BOOSTER_DEFINITIONS[boosterId].familyTypes
+  );
+  const families = [...new Set([...selectedFamilies, ...boosterFamilies])];
+  const deck = clone(families.flatMap((type) => CARD_SETS[type] || []));
+
+  selectedBoosters.forEach((boosterId) => {
+    deck.push(
+      createExtraZombieCard(
+        BOOSTER_DEFINITIONS[boosterId].extraZombieValue,
+        boosterId
+      )
+    );
+  });
 
   for (let i = deck.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -377,9 +530,10 @@ function movePlayer(game, playerIndex, amount, options = {}) {
   const player = game.players[playerIndex];
   const previousPosition = player.position;
   const targetPosition = previousPosition + amount;
+  const stopCases = getBoardConfig(game).stopCases;
   const stopCase = options.ignoreStops
     ? null
-    : STOP_CASES.find(
+    : stopCases.find(
         (value) => value > previousPosition && value <= targetPosition
       );
 
@@ -674,6 +828,10 @@ function createFaucheurDiscardOptions(game, ownerPlayerIndex) {
   return options;
 }
 
+function createBoardDestroyOptions(game, targetPlayerIndex) {
+  return createFaucheurDiscardOptions(game, targetPlayerIndex);
+}
+
 function refillCommonRow(game, sourceLabel, options = {}) {
   const stats = ensureStats(game);
   const rowCardCount = getRowCardCount(game.row);
@@ -703,6 +861,7 @@ function refillCommonRow(game, sourceLabel, options = {}) {
 
   game.row = fillRowSlots(game.row, drawn);
   game.deck = remaining;
+  recordRowAppearances(game, drawn);
   stats.rowRefills += 1;
   game.log.unshift(
     rowWasFull
@@ -714,20 +873,31 @@ function refillCommonRow(game, sourceLabel, options = {}) {
 function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = {}) {
   const player = game.players[playerIndex];
   const skippedCase = options.skipBoardCase ?? null;
+  const boardConfig = getBoardConfig(game);
 
-  if (player.position === REFILL_CASE && previousPosition !== REFILL_CASE && skippedCase !== REFILL_CASE) {
-    ensureStats(game).caseEntries[REFILL_CASE] += 1;
-    refillCommonRow(game, `Case ${REFILL_CASE} Refill`);
-    game.log.unshift(`${player.name} active la case ${REFILL_CASE} : refill de la rangee commune.`);
+  const refillCase = boardConfig.refillCases.find(
+    (value) => player.position === value && previousPosition !== value && skippedCase !== value
+  );
+  if (refillCase !== undefined) {
+    const stats = ensureStats(game);
+    stats.caseEntries[refillCase] =
+      (stats.caseEntries[refillCase] || 0) + 1;
+    refillCommonRow(game, `Case ${refillCase} Refill`);
+    game.log.unshift(`${player.name} active la case ${refillCase} : refill de la rangee commune.`);
   }
 
-  if (player.position === REMOVE_CASE && previousPosition !== REMOVE_CASE && skippedCase !== REMOVE_CASE) {
-    ensureStats(game).caseEntries[REMOVE_CASE] += 1;
+  const removeCase = boardConfig.removeCases.find(
+    (value) => player.position === value && previousPosition !== value && skippedCase !== value
+  );
+  if (removeCase !== undefined) {
+    const stats = ensureStats(game);
+    stats.caseEntries[removeCase] =
+      (stats.caseEntries[removeCase] || 0) + 1;
     const discardOptions = createDiscardColumnOptions(game, playerIndex);
 
     if (!discardOptions.length) {
       game.log.unshift(
-        `${player.name} atteint la case ${REMOVE_CASE}, mais aucune colonne n'est disponible pour l'action Remove.`
+        `${player.name} atteint la case ${removeCase}, mais aucune colonne n'est disponible pour l'action Remove.`
       );
       return;
     }
@@ -736,21 +906,58 @@ function maybeTriggerBoardEffect(game, playerIndex, previousPosition, options = 
       type: "banshee_discard",
       playerIndex,
       optional: true,
-      sourceCase: REMOVE_CASE,
+      sourceCase: removeCase,
       label: "Remove",
       cardValue: null,
       boardOnly: true,
       options: discardOptions,
     };
     game.log.unshift(
-      `${player.name} atteint la case ${REMOVE_CASE} et doit choisir une colonne a defausser.`
+      `${player.name} atteint la case ${removeCase} et doit choisir une colonne a defausser.`
     );
     return;
   }
 
-  if (player.position === 8 && previousPosition !== 8 && skippedCase !== 8) {
-    ensureStats(game).caseEntries[8] += 1;
-    game.log.unshift(`${player.name} s'arrete sur la case stop 8.`);
+  const destroyCase = boardConfig.opponentDestroyCases.find(
+    (value) => player.position === value && previousPosition !== value && skippedCase !== value
+  );
+  if (destroyCase !== undefined) {
+    const stats = ensureStats(game);
+    stats.caseEntries[destroyCase] =
+      (stats.caseEntries[destroyCase] || 0) + 1;
+    const opponentIndex = getOppositePlayerIndex(playerIndex);
+    const destroyOptions = createBoardDestroyOptions(game, playerIndex);
+
+    if (!destroyOptions.length) {
+      game.log.unshift(
+        `${player.name} atteint la case ${destroyCase}, mais aucune carte visible ne peut etre detruite.`
+      );
+      return;
+    }
+
+    game.pendingChoice = {
+      type: "board_destroy",
+      playerIndex: opponentIndex,
+      resolveForPlayerIndex: playerIndex,
+      optional: true,
+      sourceCase: destroyCase,
+      label: "Sabotage",
+      options: destroyOptions,
+    };
+    game.log.unshift(
+      `${player.name} atteint la case ${destroyCase} : ${game.players[opponentIndex].name} peut detruire une carte visible chez ${player.name}.`
+    );
+    return;
+  }
+
+  const stopCase = boardConfig.stopCases.find(
+    (value) => player.position === value && previousPosition !== value && skippedCase !== value
+  );
+  if (stopCase !== undefined) {
+    const stats = ensureStats(game);
+    stats.caseEntries[stopCase] =
+      (stats.caseEntries[stopCase] || 0) + 1;
+    game.log.unshift(`${player.name} s'arrete sur la case stop ${stopCase}.`);
   }
 }
 
@@ -845,7 +1052,7 @@ function resolveBansheeDiscardChoice(game, action) {
   if (pendingChoice.boardOnly) {
     recordColumnDiscard(game, "remove", discardedCardCount);
     game.log.unshift(
-      `${game.players[pendingChoice.playerIndex].name} active la case 5 : defausse la colonne ${action.columnIndex + 1} de ${targetPlayer.name}.`
+      `${game.players[pendingChoice.playerIndex].name} active la case ${pendingChoice.sourceCase} : defausse la colonne ${action.columnIndex + 1} de ${targetPlayer.name}.`
     );
     game.pendingChoice = null;
     return;
@@ -892,6 +1099,52 @@ function resolveFaucheurDiscardChoice(game, action) {
   recordCardMovement(game, "faucheur", move);
   game.log.unshift(
     `${game.players[pendingChoice.playerIndex].name} active Faucheur ${pendingChoice.cardValue} : defausse ${getTypeLabel(targetCard.type)} ${getCardEffectiveValue(targetCard)} en colonne ${action.columnIndex + 1}, puis +${move}/2`
+  );
+  game.pendingChoice = null;
+}
+
+function resolveBoardDestroyChoice(game, action) {
+  const pendingChoice = game.pendingChoice;
+
+  if (!pendingChoice || pendingChoice.type !== "board_destroy") {
+    throw new Error("Aucun choix de destruction en attente.");
+  }
+
+  if (action.skip) {
+    if (!pendingChoice.optional) {
+      throw new Error("Cette destruction est obligatoire.");
+    }
+
+    game.log.unshift(
+      `${game.players[pendingChoice.playerIndex].name} choisit de ne rien detruire sur la case ${pendingChoice.sourceCase}.`
+    );
+    game.pendingChoice = null;
+    return;
+  }
+
+  const option = pendingChoice.options.find(
+    (entry) =>
+      entry.targetPlayerIndex === action.targetPlayerIndex &&
+      entry.columnIndex === action.columnIndex &&
+      entry.rowIndex === action.rowIndex
+  );
+
+  if (!option) {
+    throw new Error("Cible de destruction invalide.");
+  }
+
+  const targetPlayer = game.players[action.targetPlayerIndex];
+  const targetColumn = targetPlayer.columns[action.columnIndex];
+  const targetCard = targetColumn?.[action.rowIndex];
+
+  if (!targetCard || targetCard.faceUp === false) {
+    throw new Error("Carte introuvable.");
+  }
+
+  targetColumn.splice(action.rowIndex, 1);
+  recordCardDiscard(game, "sabotage", 1);
+  game.log.unshift(
+    `${game.players[pendingChoice.playerIndex].name} active ${pendingChoice.label} : detruit ${getTypeLabel(targetCard.type)} ${getCardEffectiveValue(targetCard)} dans la colonne ${action.columnIndex + 1} de ${targetPlayer.name}.`
   );
   game.pendingChoice = null;
 }
@@ -1182,8 +1435,10 @@ function createStartingColumns() {
 }
 
 function createInitialState(hostName, options = {}) {
-  const familyTypes = normalizeFamilyTypes(options.familyTypes);
-  const deck = createDeck(familyTypes);
+  const familyTypes = normalizeFamilyTypes(options.familyTypes || BASE_FAMILY_TYPES);
+  const boosterIds = normalizeBoosterIds(options.boosterIds);
+  const boardType = normalizeBoardType(options.boardType);
+  const deck = createDeck(familyTypes, boosterIds);
   const { drawn, remaining } = drawCards(deck, 4);
   const playerOne = createPlayer(normalizeName(hostName, "Joueur 1"));
 
@@ -1197,7 +1452,7 @@ function createInitialState(hostName, options = {}) {
     : createPlayer("En attente");
   playerTwo.position = hasBot ? 1 : 0;
 
-  return {
+  const game = {
     id: generateId(6),
     phase: hasBot ? "playing" : "lobby",
     mode: hasBot ? "bot" : "online",
@@ -1210,6 +1465,8 @@ function createInitialState(hostName, options = {}) {
     pendingChoice: null,
     pendingPlay: null,
     familyTypes,
+    boosterIds,
+    boardType,
     deck: remaining,
     row: fillRowSlots([null, null, null, null], drawn),
     players: [playerOne, playerTwo],
@@ -1219,11 +1476,18 @@ function createInitialState(hostName, options = {}) {
         : "Partie creee. En attente du deuxieme joueur.",
     ],
   };
+  game.stats = createEmptyStats();
+  game.stats.initialDeckSize = deck.length;
+  recordRowAppearances(game, drawn);
+
+  return game;
 }
 
 function resetGameState(existingGame) {
   const familyTypes = normalizeFamilyTypes(existingGame.familyTypes);
-  const deck = createDeck(familyTypes);
+  const boosterIds = normalizeBoosterIds(existingGame.boosterIds);
+  const boardType = normalizeBoardType(existingGame.boardType);
+  const deck = createDeck(familyTypes, boosterIds);
   const { drawn, remaining } = drawCards(deck, 4);
 
   existingGame.phase = "playing";
@@ -1235,11 +1499,15 @@ function resetGameState(existingGame) {
   existingGame.pendingChoice = null;
   existingGame.pendingPlay = null;
   existingGame.familyTypes = familyTypes;
+  existingGame.boosterIds = boosterIds;
+  existingGame.boardType = boardType;
   existingGame.deck = remaining;
   existingGame.row = fillRowSlots([null, null, null, null], drawn);
   existingGame.updatedAt = Date.now();
   existingGame.log = ["Nouvelle partie."];
   existingGame.stats = createEmptyStats();
+  existingGame.stats.initialDeckSize = deck.length;
+  recordRowAppearances(existingGame, drawn);
 
   existingGame.players.forEach((player, index) => {
     player.position = index === 1 ? 1 : 0;
@@ -1249,10 +1517,13 @@ function resetGameState(existingGame) {
   });
 }
 
-function createBotVsBotState(difficultyA = 0, difficultyB = 0) {
+function createBotVsBotState(difficultyA = 0, difficultyB = 0, options = {}) {
   const game = createInitialState("IA A", {
     mode: "bot",
     botDifficulty: difficultyB,
+    familyTypes: options.familyTypes,
+    boosterIds: options.boosterIds,
+    boardType: options.boardType,
   });
 
   game.players[0] = createPlayer("IA A", {
@@ -1267,6 +1538,9 @@ function createBotVsBotState(difficultyA = 0, difficultyB = 0) {
   game.phase = "playing";
   game.mode = "bot";
   game.stats = createEmptyStats();
+  game.stats.initialDeckSize =
+    game.deck.length + getRowCardCount(game.row);
+  recordRowAppearances(game, game.row);
   game.log = ["Partie creee IA vs IA."];
 
   return game;
@@ -1275,6 +1549,9 @@ function createBotVsBotState(difficultyA = 0, difficultyB = 0) {
 function sanitizeGame(game, playerId) {
   const viewerPlayerIndex = game.players.findIndex((player) => player.id === playerId);
   const currentPlayer = game.players[game.currentPlayer];
+  const pendingChoiceForViewer =
+    viewerPlayerIndex !== -1 &&
+    game.pendingChoice?.playerIndex === viewerPlayerIndex;
   const activePlayerBlocked =
     game.phase === "playing" &&
     !game.pendingChoice &&
@@ -1317,8 +1594,7 @@ function sanitizeGame(game, playerId) {
     }
 
     if (game.pendingChoice.type === "banshee_discard") {
-      const isRemoveCaseChoice =
-        game.pendingChoice.sourceCase === REMOVE_CASE || Boolean(game.pendingChoice.boardOnly);
+      const isRemoveCaseChoice = Boolean(game.pendingChoice.boardOnly);
       pendingChoice = {
         type: game.pendingChoice.type,
         optional: isRemoveCaseChoice ? true : Boolean(game.pendingChoice.optional),
@@ -1331,6 +1607,24 @@ function sanitizeGame(game, playerId) {
           columnIndex: option.columnIndex,
           moonCount: option.moonCount,
           columnSize: option.columnSize,
+        })),
+      };
+    }
+
+    if (game.pendingChoice.type === "board_destroy") {
+      pendingChoice = {
+        type: game.pendingChoice.type,
+        optional: Boolean(game.pendingChoice.optional),
+        sourceCase: game.pendingChoice.sourceCase,
+        label: game.pendingChoice.label || "Sabotage",
+        options: game.pendingChoice.options.map((option) => ({
+          targetPlayerIndex: option.targetPlayerIndex,
+          targetPlayerName: game.players[option.targetPlayerIndex].name,
+          columnIndex: option.columnIndex,
+          rowIndex: option.rowIndex,
+          cardValue: option.cardValue,
+          cardType: option.cardType,
+          cardLabel: option.cardLabel || getTypeLabel(option.cardType),
         })),
       };
     }
@@ -1379,8 +1673,15 @@ function sanitizeGame(game, playerId) {
     currentPlayer: game.currentPlayer,
     currentPlayerName: currentPlayer.name,
     familyTypes: normalizeFamilyTypes(game.familyTypes),
+    boosterIds: normalizeBoosterIds(game.boosterIds),
+    boardType: normalizeBoardType(game.boardType),
     selectedCardIndex: game.selectedCardIndex,
     pendingChoice,
+    hasPendingChoice: Boolean(game.pendingChoice),
+    pendingChoicePlayerName:
+      game.pendingChoice && game.players[game.pendingChoice.playerIndex]
+        ? game.players[game.pendingChoice.playerIndex].name
+        : null,
     deckCount: game.deck.length,
     row: game.row,
     players: visiblePlayers,
@@ -1389,7 +1690,8 @@ function sanitizeGame(game, playerId) {
     viewerCanAct:
       viewerPlayerIndex !== -1 &&
       game.phase === "playing" &&
-      game.players[game.currentPlayer].id === playerId &&
+      (pendingChoiceForViewer ||
+        (!game.pendingChoice && game.players[game.currentPlayer].id === playerId)) &&
       !game.winner,
     activePlayerBlocked,
   };
@@ -1451,9 +1753,13 @@ function expandPendingChoicesForOutcome(state, playerId, actions) {
 
   const playerIndex = state.players.findIndex((player) => player.id === playerId);
 
+  if (state.pendingChoice.playerIndex !== playerIndex) {
+    return [{ actions, resultingState: state }];
+  }
+
   if (
     playerIndex !== -1 &&
-    ["board_flip", "banshee_discard", "faucheur_discard"].includes(
+    ["board_flip", "banshee_discard", "faucheur_discard", "board_destroy"].includes(
       state.pendingChoice.type
     )
   ) {
@@ -1573,6 +1879,42 @@ function expandPendingChoicesForOutcome(state, playerId, actions) {
         },
       ]);
     });
+  }
+
+  if (state.pendingChoice.type === "board_destroy") {
+    const skipOutcomes =
+      state.pendingChoice.optional
+        ? (() => {
+            const nextState = clone(state);
+            performAction(nextState, playerId, {
+              type: "resolve_board_destroy",
+              skip: true,
+            });
+            return expandPendingChoicesForOutcome(nextState, playerId, [
+              ...actions,
+              { type: "resolve_board_destroy", skip: true },
+            ]);
+          })()
+        : [];
+
+    return state.pendingChoice.options.flatMap((option) => {
+      const nextState = clone(state);
+      performAction(nextState, playerId, {
+        type: "resolve_board_destroy",
+        targetPlayerIndex: option.targetPlayerIndex,
+        columnIndex: option.columnIndex,
+        rowIndex: option.rowIndex,
+      });
+      return expandPendingChoicesForOutcome(nextState, playerId, [
+        ...actions,
+        {
+          type: "resolve_board_destroy",
+          targetPlayerIndex: option.targetPlayerIndex,
+          columnIndex: option.columnIndex,
+          rowIndex: option.rowIndex,
+        },
+      ]);
+    }).concat(skipOutcomes);
   }
 
   return [{ actions, resultingState: state }];
@@ -1826,6 +2168,39 @@ function chooseBotPendingChoice(game, botIndex) {
     };
   }
 
+  if (pendingChoice.type === "board_destroy") {
+    if (!pendingChoice.options.length) {
+      return {
+        actions: [{ type: "resolve_board_destroy", skip: true }],
+        score: 0,
+      };
+    }
+
+    const target = [...pendingChoice.options].sort((a, b) => {
+      const scoreA =
+        a.cardValue * 10 +
+        (a.cardType === "zombie" ? 8 : 0) +
+        (a.cardType === "idole" ? 6 : 0);
+      const scoreB =
+        b.cardValue * 10 +
+        (b.cardType === "zombie" ? 8 : 0) +
+        (b.cardType === "idole" ? 6 : 0);
+      return scoreB - scoreA;
+    })[0];
+
+    return {
+      actions: [
+        {
+          type: "resolve_board_destroy",
+          targetPlayerIndex: target.targetPlayerIndex,
+          columnIndex: target.columnIndex,
+          rowIndex: target.rowIndex,
+        },
+      ],
+      score: target.cardValue * 10,
+    };
+  }
+
   return null;
 }
 
@@ -1907,10 +2282,11 @@ function chooseBotOutcome(game, botIndex, difficulty) {
 }
 
 function isBotTurn(game) {
+  const activePlayerIndex = game.pendingChoice?.playerIndex ?? game.currentPlayer;
   return (
     game.phase === "playing" &&
     !game.winner &&
-    Boolean(game.players[game.currentPlayer]?.isBot)
+    Boolean(game.players[activePlayerIndex]?.isBot)
   );
 }
 
@@ -1918,7 +2294,7 @@ function processBotTurns(game) {
   let safety = 0;
 
   while (isBotTurn(game) && safety < 20) {
-    const botIndex = game.currentPlayer;
+    const botIndex = game.pendingChoice?.playerIndex ?? game.currentPlayer;
     const bot = game.players[botIndex];
     const difficulty = Number(bot.botDifficulty ?? 0);
     const chosen = chooseBotOutcome(clone(game), botIndex, difficulty);
@@ -2058,6 +2434,7 @@ function ensureRowAvailable(game) {
   const { drawn, remaining } = drawCards(game.deck, Math.min(4, game.deck.length));
   game.row = fillRowSlots([null, null, null, null], drawn);
   game.deck = remaining;
+  recordRowAppearances(game, drawn);
   game.log.unshift(`Securite : la rangee etait vide, ${drawn.length} carte(s) ont ete ajoutee(s).`);
 }
 
@@ -2098,7 +2475,9 @@ function performAction(game, playerId, action) {
     throw new Error("Joueur introuvable.");
   }
 
-  if (game.currentPlayer !== playerIndex) {
+  const isPendingChoicePlayer = game.pendingChoice?.playerIndex === playerIndex;
+
+  if (game.currentPlayer !== playerIndex && !isPendingChoicePlayer) {
     throw new Error("Ce n'est pas votre tour.");
   }
 
@@ -2186,6 +2565,31 @@ function performAction(game, playerId, action) {
     return;
   }
 
+  if (action.type === "resolve_board_destroy") {
+    if (!game.pendingChoice || game.pendingChoice.playerIndex !== playerIndex) {
+      throw new Error("Aucun choix de destruction en attente.");
+    }
+
+    const pendingPlay = game.pendingPlay;
+    const sourceCase = game.pendingChoice.sourceCase;
+    const resolveForPlayerIndex =
+      game.pendingChoice.resolveForPlayerIndex ?? playerIndex;
+    resolveBoardDestroyChoice(game, action);
+    game.pendingPlay = {
+      ...(pendingPlay || {}),
+      resolvedBoardCase: sourceCase,
+    };
+    finalizeTurnAfterResolvedPlay(
+      game,
+      resolveForPlayerIndex,
+      pendingPlay?.wasLeftmostCard,
+      pendingPlay?.previousPosition,
+      pendingPlay?.shouldRefillRow
+    );
+    game.pendingPlay = null;
+    return;
+  }
+
   if (game.pendingChoice) {
     throw new Error("Un choix est en attente avant de poursuivre.");
   }
@@ -2240,6 +2644,10 @@ function performAction(game, playerId, action) {
     const previousPosition = player.position;
 
     targetColumn.push(card);
+    recordVisibleCardPlayed(game, card.type);
+    if (card.chief) {
+      recordChiefPlayed(game, playerIndex, card.type);
+    }
     game.row[cardIndex] = null;
     game.log.unshift(
       `${player.name} joue ${getTypeLabel(card.type)} ${card.value} dans sa colonne ${columnIndex + 1}`
@@ -2295,6 +2703,7 @@ function performAction(game, playerId, action) {
     };
 
     targetColumn.push(hiddenCard);
+    recordHiddenSourceCardPlayed(game, selectedCard.type);
     game.row[cardIndex] = null;
     game.selectedCardIndex = null;
     game.log.unshift(
@@ -2419,6 +2828,8 @@ function handleApi(req, res, url) {
           mode: body.mode,
           botDifficulty: body.botDifficulty,
           familyTypes: body.familyTypes,
+          boosterIds: body.boosterIds,
+          boardType: body.boardType,
         });
         games.set(state.id, { state, clients: new Set() });
         sendJson(res, 201, {
