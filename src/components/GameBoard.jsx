@@ -7,6 +7,48 @@ const STACK_CARD_HEIGHT = 172;
 const STACK_STEP = 42;
 const STAR_CASE = 16;
 
+const BOARD_CONFIGS = {
+  blank: {
+    effects: {},
+    zones: [
+      { start: 0, end: 3, label: "Zone 1", effectText: "" },
+      { start: 4, end: 7, label: "Zone 2", effectText: "" },
+      { start: 8, end: 11, label: "Zone 3", effectText: "" },
+      { start: 12, end: 15, label: "Zone 4", effectText: "" },
+    ],
+  },
+  base: {
+    effects: {
+      5: "Refill",
+      8: "Stop",
+      10: "Remove",
+    },
+    zones: [
+      { start: 0, end: 3, label: "Zone 1", effectText: "" },
+      { start: 4, end: 7, label: "Zone 2", effectText: "Case 5 : Refill" },
+      { start: 8, end: 11, label: "Zone 3", effectText: "Case 8 : stop / Case 10 : Remove" },
+      { start: 12, end: 15, label: "Zone 4", effectText: "" },
+    ],
+  },
+  test: {
+    effects: {
+      5: "Sabotage",
+      8: "Stop",
+      10: "Remove",
+    },
+    zones: [
+      { start: 0, end: 3, label: "Zone 1", effectText: "" },
+      { start: 4, end: 7, label: "Zone 2", effectText: "Case 5 : Sabotage" },
+      { start: 8, end: 11, label: "Zone 3", effectText: "Case 8 : stop / Case 10 : Remove" },
+      { start: 12, end: 15, label: "Zone 4", effectText: "" },
+    ],
+  },
+};
+
+function getBoardConfig(boardType) {
+  return BOARD_CONFIGS[boardType] || BOARD_CONFIGS.base;
+}
+
 function getColumnValue(column) {
   for (let index = column.length - 1; index >= 0; index -= 1) {
     const card = column[index];
@@ -135,11 +177,8 @@ function getZoneIndexFromPosition(position) {
   return 3;
 }
 
-function getCellEffect(value) {
-  if (value === 5) return "Refill";
-  if (value === 8) return "Stop";
-  if (value === 10) return "Remove";
-  return "";
+function getCellEffect(value, boardType) {
+  return getBoardConfig(boardType).effects[value] || "";
 }
 
 function Zone({
@@ -150,6 +189,7 @@ function Zone({
   label,
   effectText,
   animationState,
+  boardType,
 }) {
   const player1ZoneIndex = getZoneIndexFromPosition(player1Position);
   const player2ZoneIndex = getZoneIndexFromPosition(player2Position);
@@ -189,7 +229,7 @@ function Zone({
           const value = start + index;
           const p1Here = player1Position === value;
           const p2Here = player2Position === value;
-          const cellEffect = getCellEffect(value);
+          const cellEffect = getCellEffect(value, boardType);
           const p1Moved = animationState?.movedPlayers?.includes(0) && p1Here;
           const p2Moved = animationState?.movedPlayers?.includes(1) && p2Here;
 
@@ -311,13 +351,9 @@ export default function GameBoard({
   canInteract,
   onColumnClick,
   animationState,
+  boardType = "base",
 }) {
-  const zones = [
-    { start: 0, end: 3, label: "Zone 1", effectText: "" },
-    { start: 4, end: 7, label: "Zone 2", effectText: "Case 5 : Refill" },
-    { start: 8, end: 11, label: "Zone 3", effectText: "Case 8 : stop / Case 10 : Remove" },
-    { start: 12, end: 15, label: "Zone 4", effectText: "" },
-  ];
+  const zones = getBoardConfig(boardType).zones;
 
   return (
     <div style={{ marginTop: 8, overflowX: "auto", paddingBottom: 10 }}>
@@ -394,6 +430,7 @@ export default function GameBoard({
                 player1Position={players[0].position}
                 player2Position={players[1].position}
                 animationState={animationState}
+                boardType={boardType}
               />
             ))}
             <StarZone
