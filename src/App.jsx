@@ -112,15 +112,28 @@ const CARD_RULES = [
   { name: "Idole", effect: "Avance de 1 par chef visible de votre cote." },
 ];
 
-const BOARD_RULES = [
-  { name: "Case 5", effect: "Refill : comble les emplacements vides de la rangee. Si elle est deja pleine, rien ne se passe." },
-  { name: "Case 8", effect: "Stop : si un deplacement atteint ou depasse cette case, le pion s'y arrete. La Sorciere l'ignore." },
-  { name: "Case 10", effect: "Remove : vous pouvez defausser une de vos colonnes." },
+const BOARD_RULES_BY_TYPE = {
+  blank: [
+    { name: "Plateau vierge", effect: "Aucun pouvoir sur les cases." },
+  ],
+  base: [
+    { name: "Case 5", effect: "Refill : comble les emplacements vides de la rangee." },
+    { name: "Case 8", effect: "Stop : si un deplacement atteint ou depasse cette case, le pion s'y arrete. La Sorciere l'ignore." },
+    { name: "Case 10", effect: "Remove : vous pouvez defausser une de vos colonnes, ou passer." },
+  ],
+  test: [
+    { name: "Case 5", effect: "Sabotage : l'adversaire peut detruire une carte visible du dessus chez le joueur arrive sur la case, ou passer." },
+    { name: "Case 8", effect: "Stop : si un deplacement atteint ou depasse cette case, le pion s'y arrete. La Sorciere l'ignore." },
+    { name: "Case 10", effect: "Remove : vous pouvez defausser une de vos colonnes, ou passer." },
+  ],
+};
+
+const SHARED_BOARD_RULES = [
   { name: "Chefs", effect: "Apres une etoile, les deux pions reviennent a 0 puis avancent du nombre de chefs poses de chaque cote." },
   { name: "Etoile", effect: "La case etoile est en 16. Quand une etoile est gagnee, la rangee commune est automatiquement refaite." },
 ];
 
-const FAMILY_OPTIONS = [
+const BASE_FAMILY_OPTIONS = [
   {
     type: "sorciere",
     label: "Sorciere",
@@ -152,24 +165,48 @@ const FAMILY_OPTIONS = [
     effect: "Copie la valeur au meme niveau a gauche ou a droite.",
   },
   {
-    type: "banshee",
-    label: "Banshee",
-    effect: "Carte lune. Avance de 1 par carte retournee de votre cote.",
-  },
-  {
-    type: "blob",
-    label: "Blob",
-    effect: "Avance de 1 puis vous pouvez retourner une carte visible, chez vous ou chez l'adversaire.",
-  },
-  {
     type: "momie",
     label: "Momie",
     effect: "Avance de 1, ou de 4 si elle est jouee sur une carte face cachee.",
   },
+];
+
+const BOOSTER_OPTIONS = [
   {
-    type: "idole",
-    label: "Idole",
-    effect: "Avance de 1 par chef visible de votre cote.",
+    id: "booster1",
+    label: "Booster 1",
+    content: "Banshee + 1 Zombie valeur 1",
+    effect: "Banshee avance de 1 par carte retournee de votre cote.",
+  },
+  {
+    id: "booster2",
+    label: "Booster 2",
+    content: "Idole + 1 Zombie valeur 2",
+    effect: "Idole avance de 1 par chef visible de votre cote.",
+  },
+  {
+    id: "booster3",
+    label: "Booster 3",
+    content: "Blob + 1 Zombie valeur 3",
+    effect: "Blob avance de 1 puis peut retourner une carte visible.",
+  },
+];
+
+const BOARD_OPTIONS = [
+  {
+    type: "blank",
+    label: "Plateau vierge",
+    effect: "Aucun pouvoir sur les cases.",
+  },
+  {
+    type: "base",
+    label: "Plateau base",
+    effect: "Case 5 Refill, case 8 Stop, case 10 Remove.",
+  },
+  {
+    type: "test",
+    label: "Plateau test",
+    effect: "Case 5 Sabotage adverse, case 8 Stop, case 10 Remove.",
   },
 ];
 
@@ -179,9 +216,8 @@ export default function App() {
   const [game, setGame] = useState(null);
   const [createName, setCreateName] = useState("");
   const [createMode, setCreateMode] = useState("online");
-  const [selectedFamilyTypes, setSelectedFamilyTypes] = useState(
-    FAMILY_OPTIONS.map((family) => family.type)
-  );
+  const [selectedBoosterIds, setSelectedBoosterIds] = useState([]);
+  const [selectedBoardType, setSelectedBoardType] = useState("base");
   const [joinName, setJoinName] = useState("");
   const [joinCode, setJoinCode] = useState(initialSession.gameId || "");
   const [error, setError] = useState("");
@@ -261,7 +297,8 @@ export default function App() {
         body: JSON.stringify({
           playerName: createName,
           mode: createMode,
-          familyTypes: selectedFamilyTypes,
+          boosterIds: selectedBoosterIds,
+          boardType: selectedBoardType,
         }),
       });
 
@@ -282,11 +319,11 @@ export default function App() {
     }
   }
 
-  function toggleFamily(type) {
-    setSelectedFamilyTypes((current) =>
-      current.includes(type)
-        ? current.filter((entry) => entry !== type)
-        : [...current, type]
+  function toggleBooster(boosterId) {
+    setSelectedBoosterIds((current) =>
+      current.includes(boosterId)
+        ? current.filter((entry) => entry !== boosterId)
+        : [...current, boosterId]
     );
   }
 
@@ -361,6 +398,7 @@ export default function App() {
   const viewerCanAct = Boolean(game?.viewerCanAct);
   const activePlayerBlocked = Boolean(game?.activePlayerBlocked);
   const pendingChoice = game?.pendingChoice || null;
+  const hasPendingChoice = Boolean(game?.hasPendingChoice);
   const isRemoveDiscardChoice =
     pendingChoice?.type === "banshee_discard" &&
     (pendingChoice?.label === "Remove" || pendingChoice?.boardOnly);
@@ -372,6 +410,10 @@ export default function App() {
   const selectedCardLabel = selectedCard
     ? CREATURES[selectedCard.type]?.label || selectedCard.type
     : "";
+  const boardRules = [
+    ...(BOARD_RULES_BY_TYPE[game?.boardType || "base"] || BOARD_RULES_BY_TYPE.base),
+    ...SHARED_BOARD_RULES,
+  ];
 
   useEffect(() => {
     if (!viewerCanAct || pendingChoice || activePlayerBlocked || !selectedCard) {
@@ -537,49 +579,70 @@ export default function App() {
                 <option value="bot">Partie contre IA</option>
               </select>
               <div style={familySelectorStyle}>
-                <div style={{ fontWeight: 800, marginBottom: 8 }}>Familles en jeu</div>
+                <div style={{ fontWeight: 800, marginBottom: 8 }}>
+                  Jeu de base inclus
+                </div>
                 <div style={familyGridStyle}>
-                  {FAMILY_OPTIONS.map((family) => (
-                    <label key={family.type} style={familyOptionStyle}>
+                  {BASE_FAMILY_OPTIONS.map((family) => (
+                    <div key={family.type} style={fixedFamilyOptionStyle}>
+                      <span style={familyLabelStyle}>{family.label}</span>
+                      <span style={familyEffectStyle}>{family.effect}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={familySelectorStyle}>
+                <div style={{ fontWeight: 800, marginBottom: 8 }}>
+                  Boosters optionnels
+                </div>
+                <div style={familyGridStyle}>
+                  {BOOSTER_OPTIONS.map((booster) => (
+                    <label key={booster.id} style={familyOptionStyle}>
                       <input
                         type="checkbox"
-                        checked={selectedFamilyTypes.includes(family.type)}
-                        onChange={() => toggleFamily(family.type)}
+                        checked={selectedBoosterIds.includes(booster.id)}
+                        onChange={() => toggleBooster(booster.id)}
                       />
                       <span>
-                        <span style={familyLabelStyle}>{family.label}</span>
-                        <span style={familyEffectStyle}>{family.effect}</span>
+                        <span style={familyLabelStyle}>{booster.label}</span>
+                        <span style={familyEffectStyle}>
+                          {booster.content}. {booster.effect}
+                        </span>
                       </span>
                     </label>
                   ))}
                 </div>
-                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFamilyTypes(FAMILY_OPTIONS.map((family) => family.type))}
-                    style={miniButtonStyle}
-                  >
-                    Tout cocher
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFamilyTypes([])}
-                    style={miniButtonStyle}
-                  >
-                    Tout retirer
-                  </button>
+              </div>
+
+              <div style={familySelectorStyle}>
+                <div style={{ fontWeight: 800, marginBottom: 8 }}>
+                  Plateau
+                </div>
+                <div style={familyGridStyle}>
+                  {BOARD_OPTIONS.map((board) => (
+                    <label key={board.type} style={familyOptionStyle}>
+                      <input
+                        type="radio"
+                        name="boardType"
+                        checked={selectedBoardType === board.type}
+                        onChange={() => setSelectedBoardType(board.type)}
+                      />
+                      <span>
+                        <span style={familyLabelStyle}>{board.label}</span>
+                        <span style={familyEffectStyle}>{board.effect}</span>
+                      </span>
+                    </label>
+                  ))}
                 </div>
               </div>
               <button
                 onClick={createGame}
-                disabled={busy || selectedFamilyTypes.length === 0}
+                disabled={busy}
                 style={primaryButtonStyle}
               >
                 {createMode === "bot" ? "Creer une partie contre IA" : "Creer la partie"}
               </button>
-              {selectedFamilyTypes.length === 0 ? (
-                <div style={smallHelpStyle}>Choisissez au moins une famille.</div>
-              ) : null}
             </Panel>
 
             <Panel title="Rejoindre une partie">
@@ -654,7 +717,7 @@ export default function App() {
                       <div style={{ animation: animationState.victory ? "victoryGlow 1400ms ease-in-out infinite" : "none" }}>
                         <StatusPill label={`Victoire : ${game.winner}`} tone="good" />
                       </div>
-                    ) : pendingChoice ? (
+                    ) : hasPendingChoice ? (
                       <StatusPill label="Choix en attente" tone="warn" />
                     ) : viewerCanAct ? (
                       <StatusPill label="A vous de jouer" tone="good" />
@@ -689,6 +752,8 @@ export default function App() {
                       ? isRemoveDiscardChoice
                         ? `Case ${pendingChoice.sourceCase} : choisissez une colonne a defausser, ou passez.`
                         : "Banshee : carte lune, avancez de 1 par carte retournee de votre cote."
+                      : pendingChoice.type === "board_destroy"
+                      ? `${pendingChoice.label || "Sabotage"} : choisissez une carte visible a detruire, ou passez.`
                       : pendingChoice.type === "faucheur_discard"
                       ? "Faucheur : choisissez une carte visible du dessus a defausser."
                       : `Case ${pendingChoice.sourceCase} : choisissez une carte a retourner, ou passez.`
@@ -805,6 +870,50 @@ export default function App() {
                 </div>
               ) : null}
 
+              {pendingChoice?.type === "board_destroy" ? (
+                <div style={choicePanelStyle}>
+                  <div style={{ fontWeight: 800, marginBottom: 10 }}>
+                    {pendingChoice.label || "Sabotage"} : detruire une carte visible
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                    {pendingChoice.options.map((option) => (
+                      <button
+                        key={`${option.targetPlayerIndex}-${option.columnIndex}-${option.rowIndex}`}
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          sendAction({
+                            type: "resolve_board_destroy",
+                            targetPlayerIndex: option.targetPlayerIndex,
+                            columnIndex: option.columnIndex,
+                            rowIndex: option.rowIndex,
+                          });
+                        }}
+                        style={choiceButtonStyle}
+                      >
+                        {option.targetPlayerName} col {option.columnIndex + 1} :{" "}
+                        {option.cardLabel} {option.cardValue}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      sendAction({
+                        type: "resolve_board_destroy",
+                        skip: true,
+                      });
+                    }}
+                    style={secondaryChoiceButtonStyle}
+                  >
+                    Ne rien detruire
+                  </button>
+                </div>
+              ) : null}
+
               {pendingChoice?.type === "board_flip" ? (
                 <div style={choicePanelStyle}>
                   <div style={{ fontWeight: 800, marginBottom: 10 }}>
@@ -851,7 +960,9 @@ export default function App() {
 
               {game.phase === "playing" && !game.winner && !viewerCanAct ? (
                 <div style={waitingBannerStyle}>
-                  {game.players[game.currentPlayer]?.isBot
+                  {hasPendingChoice
+                    ? `Choix en attente : ${game.pendingChoicePlayerName || "un joueur"} doit agir.`
+                    : game.players[game.currentPlayer]?.isBot
                     ? `${game.currentPlayerName} reflechit...`
                     : `Attendez l'action de ${game.currentPlayerName}.`}
                 </div>
@@ -919,6 +1030,7 @@ export default function App() {
                         columnIndex,
                       })
                 }
+                boardType={game.boardType}
               />
             </Panel>
 
@@ -939,7 +1051,7 @@ export default function App() {
 
                 <div style={rulesCardStyle}>
                   <div style={rulesTitleStyle}>Plateau</div>
-                  {BOARD_RULES.map((rule) => (
+                  {boardRules.map((rule) => (
                     <div key={rule.name} style={ruleRowStyle}>
                       <strong>{rule.name}</strong> : {rule.effect}
                     </div>
@@ -988,16 +1100,6 @@ const smallButtonStyle = {
   cursor: "pointer",
 };
 
-const miniButtonStyle = {
-  padding: "8px 10px",
-  borderRadius: 10,
-  border: "1px solid #cbd5e1",
-  background: "white",
-  cursor: "pointer",
-  fontSize: 12,
-  fontWeight: 700,
-};
-
 const familySelectorStyle = {
   border: "1px solid #cbd5e1",
   borderRadius: 14,
@@ -1023,6 +1125,12 @@ const familyOptionStyle = {
   cursor: "pointer",
 };
 
+const fixedFamilyOptionStyle = {
+  ...familyOptionStyle,
+  cursor: "default",
+  background: "#eef2ff",
+};
+
 const familyLabelStyle = {
   display: "block",
   fontWeight: 800,
@@ -1034,13 +1142,6 @@ const familyEffectStyle = {
   color: "#475569",
   fontSize: 12,
   lineHeight: 1.25,
-};
-
-const smallHelpStyle = {
-  marginTop: 8,
-  fontSize: 12,
-  color: "#9a3412",
-  fontWeight: 700,
 };
 
 const topBarStyle = {
