@@ -3,28 +3,28 @@ import { CREATURES } from "../data/creatures";
 const CARD_WIDTH = 112;
 const CARD_HEIGHT = 172;
 const EFFECT_HINTS = {
-  sorciere: "zone +3 stop",
+  sorciere: "+1 ou zone +3",
   vampire: "copie face",
   squelette: "lune +1",
   loup: "lunes x2",
   zombie: "+1/+2/+4/+6/⭐",
   reflet: "meme niveau",
   banshee: "lune + cartes",
-  blob: "+1 puis flip",
+  blob: "+2 puis retourner",
   diable: "defausse perso",
   momie: "1 ou 4",
   idole: "chefs visibles",
   statue: "lune fixe",
 };
 const EFFECT_TEXTS = {
-  sorciere: "Avancez de 3 si votre pion est dans cette zone. Ignore les stops.",
+  sorciere: "Avancez de 1, ou de 3 si votre pion est dans cette zone. Ignore les stops.",
   vampire: "Avancez de la valeur de la carte en face.",
   squelette: "Avancez de 1. Rejouez si pose sur une lune.",
   loup: "Avancez de 2 par lune dans la colonne adverse.",
   zombie: "+1/+2/+4/+6/⭐",
   reflet: "Copiez la valeur a gauche ou a droite au meme niveau.",
   banshee: "Carte lune. Avancez de 1 par carte retournee de votre cote.",
-  blob: "Avancez de 1, puis vous pouvez retourner une carte visible.",
+  blob: "Avancez de 2, puis vous pouvez retourner une carte visible chez vous ou chez l'adversaire.",
   diable: "Defaussez une colonne au choix chez vous.",
   momie: "Avancez de 1, ou de 4 sur une carte cachee.",
   idole: "Avancez de 1 par chef visible de votre cote.",
