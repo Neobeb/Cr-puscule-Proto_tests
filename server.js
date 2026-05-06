@@ -15,6 +15,7 @@ const TYPE_LABELS = {
   reflet: "Reflet",
   banshee: "Banshee",
   blob: "Blob",
+  diable: "Diable",
   momie: "Momie",
   idole: "Idole",
   statue: "Statue",
@@ -44,6 +45,9 @@ const BOOSTER_DEFINITIONS = {
   booster3: {
     familyTypes: ["blob"],
     extraZombieValue: 3,
+  },
+  booster4: {
+    familyTypes: ["diable"],
   },
 };
 const DEFAULT_BOOSTER_IDS = [];
@@ -122,6 +126,7 @@ const CARD_SETS = {
     moonIndexes: [6],
     chiefIndexes: [9],
   }),
+  diable: createCardSet("diable", STANDARD_VALUES),
   momie: createCardSet("momie", STANDARD_VALUES, {
     moonIndexes: [7],
     chiefIndexes: [9],
@@ -579,6 +584,70 @@ function countColumnsWithMoons(game, playerIndex) {
       total +
       (countMoonsInColumn(column, player.columnMoons?.[columnIndex] || 0) > 0 ? 1 : 0),
     0
+  );
+}
+
+function getMoonCountsByColumn(game, playerIndex) {
+  const player = game.players[playerIndex];
+  return player.columns.map((column, columnIndex) =>
+    countMoonsInColumn(column, player.columnMoons?.[columnIndex] || 0)
+  );
+}
+
+function getWolfExposureScore(game, playerIndex) {
+  return getMoonCountsByColumn(game, playerIndex).reduce(
+    (total, moonCount) => total + moonCount * moonCount,
+    0
+  );
+}
+
+function getColumnPressureScore(game, playerIndex) {
+  const player = game.players[playerIndex];
+
+  return player.columns.reduce((total, column) => {
+    const topValue = getTopValue(column);
+    const hiddenCount = column.filter((card) => card.faceUp === false).length;
+    const chiefCount = column.filter(
+      (card) => card.faceUp !== false && card.chief
+    ).length;
+    const zombieCount = column.filter(
+      (card) => card.faceUp !== false && card.type === "zombie"
+    ).length;
+
+    return (
+      total +
+      topValue * topValue * 85 +
+      Math.max(0, column.length - 3) * 20 +
+      hiddenCount * 25 -
+      chiefCount * 45 -
+      zombieCount * 30
+    );
+  }, 0);
+}
+
+function getOwnColumnDiscardUtility(game, playerIndex, columnIndex) {
+  const column = game.players[playerIndex].columns[columnIndex] || [];
+  const topValue = getTopValue(column);
+  const hiddenCount = column.filter((card) => card.faceUp === false).length;
+  const chiefCount = column.filter(
+    (card) => card.faceUp !== false && card.chief
+  ).length;
+  const zombieCount = column.filter(
+    (card) => card.faceUp !== false && card.type === "zombie"
+  ).length;
+  const moonCount = countMoonsInColumn(
+    column,
+    game.players[playerIndex].columnMoons?.[columnIndex] || 0
+  );
+
+  return Math.max(
+    0,
+    topValue * topValue * 120 +
+      Math.max(0, column.length - 2) * 45 +
+      hiddenCount * 65 +
+      moonCount * 20 -
+      chiefCount * 170 -
+      zombieCount * 130
   );
 }
 
@@ -1070,6 +1139,41 @@ function resolveBansheeDiscardChoice(game, action) {
   game.pendingChoice = null;
 }
 
+function resolveDiableDiscardChoice(game, action) {
+  const pendingChoice = game.pendingChoice;
+
+  if (!pendingChoice || pendingChoice.type !== "diable_discard") {
+    throw new Error("Aucun choix Diable en attente.");
+  }
+
+  const option = pendingChoice.options.find(
+    (entry) =>
+      entry.targetPlayerIndex === action.targetPlayerIndex &&
+      entry.columnIndex === action.columnIndex
+  );
+
+  if (!option) {
+    throw new Error("Cible de defausse invalide.");
+  }
+
+  const targetPlayer = game.players[action.targetPlayerIndex];
+  const targetColumn = targetPlayer.columns[action.columnIndex];
+
+  if (!targetColumn || !targetColumn.length) {
+    throw new Error("Colonne introuvable.");
+  }
+
+  const discardedCardCount = targetColumn.length;
+  targetPlayer.columns[action.columnIndex] = [];
+  recordColumnDiscard(game, "diable", discardedCardCount);
+  recordCardActivation(game, "diable");
+  recordCardMovement(game, "diable", 0);
+  game.log.unshift(
+    `${game.players[pendingChoice.playerIndex].name} active Diable ${pendingChoice.cardValue} : defausse la colonne ${action.columnIndex + 1} de ${targetPlayer.name}.`
+  );
+  game.pendingChoice = null;
+}
+
 function resolveFaucheurDiscardChoice(game, action) {
   const pendingChoice = game.pendingChoice;
 
@@ -1354,6 +1458,31 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       );
       return;
     }
+    case "diable": {
+      const discardOptions = createDiscardColumnOptions(game, playerIndex);
+
+      if (!discardOptions.length) {
+        recordCardActivation(game, "diable");
+        recordCardMovement(game, "diable", 0);
+        game.log.unshift(
+          `${game.players[playerIndex].name} active Diable ${card.value} : aucune colonne a defausser`
+        );
+        return;
+      }
+
+      game.pendingChoice = {
+        type: "diable_discard",
+        playerIndex,
+        optional: false,
+        label: "Diable",
+        cardValue: card.value,
+        options: discardOptions,
+      };
+      game.log.unshift(
+        `${game.players[playerIndex].name} doit choisir une de ses colonnes a defausser pour son Diable ${card.value}.`
+      );
+      return;
+    }
     case "momie": {
       recordCardActivation(game, "momie");
       const playerColumn = game.players[playerIndex].columns[columnIndex];
@@ -1614,6 +1743,21 @@ function sanitizeGame(game, playerId) {
       };
     }
 
+    if (game.pendingChoice.type === "diable_discard") {
+      pendingChoice = {
+        type: game.pendingChoice.type,
+        optional: false,
+        label: "Diable",
+        options: game.pendingChoice.options.map((option) => ({
+          targetPlayerIndex: option.targetPlayerIndex,
+          targetPlayerName: game.players[option.targetPlayerIndex].name,
+          columnIndex: option.columnIndex,
+          moonCount: option.moonCount,
+          columnSize: option.columnSize,
+        })),
+      };
+    }
+
     if (game.pendingChoice.type === "board_destroy") {
       pendingChoice = {
         type: game.pendingChoice.type,
@@ -1717,24 +1861,29 @@ function evaluateGameForBot(game, botIndex) {
   const opponentChiefs = countChiefsOnPlayerBoard(game, opponentIndex);
   const botZombies = countCardsOfTypeOnPlayerBoard(game, botIndex, "zombie");
   const opponentZombies = countCardsOfTypeOnPlayerBoard(game, opponentIndex, "zombie");
-  const botMoons = game.players[botIndex].columns.reduce(
-    (total, column, columnIndex) =>
-      total + countMoonsInColumn(column, game.players[botIndex].columnMoons?.[columnIndex] || 0),
+  const botMoonCounts = getMoonCountsByColumn(game, botIndex);
+  const opponentMoonCounts = getMoonCountsByColumn(game, opponentIndex);
+  const botMoons = botMoonCounts.reduce((total, moonCount) => total + moonCount, 0);
+  const opponentMoons = opponentMoonCounts.reduce(
+    (total, moonCount) => total + moonCount,
     0
   );
-  const opponentMoons = game.players[opponentIndex].columns.reduce(
-    (total, column, columnIndex) =>
-      total +
-      countMoonsInColumn(column, game.players[opponentIndex].columnMoons?.[columnIndex] || 0),
-    0
-  );
+  const botMoonColumns = botMoonCounts.filter((moonCount) => moonCount > 0).length;
+  const opponentMoonColumns = opponentMoonCounts.filter((moonCount) => moonCount > 0).length;
+  const botWolfExposure = getWolfExposureScore(game, botIndex);
+  const opponentWolfExposure = getWolfExposureScore(game, opponentIndex);
+  const botColumnPressure = getColumnPressureScore(game, botIndex);
+  const opponentColumnPressure = getColumnPressureScore(game, opponentIndex);
 
   return (
     (bot.stars - opponent.stars) * 100_000 +
     (bot.position - opponent.position) * 1_000 +
     (botChiefs - opponentChiefs) * 90 +
     (botZombies - opponentZombies) * 70 +
-    (botMoons - opponentMoons) * 25 +
+    (botMoons - opponentMoons) * 8 +
+    (botMoonColumns - opponentMoonColumns) * 35 +
+    (opponentWolfExposure - botWolfExposure) * 55 +
+    (opponentColumnPressure - botColumnPressure) +
     (game.currentPlayer === botIndex ? 10 : -10)
   );
 }
@@ -1762,7 +1911,7 @@ function expandPendingChoicesForOutcome(state, playerId, actions) {
 
   if (
     playerIndex !== -1 &&
-    ["board_flip", "banshee_discard", "faucheur_discard", "board_destroy"].includes(
+    ["board_flip", "banshee_discard", "diable_discard", "faucheur_discard", "board_destroy"].includes(
       state.pendingChoice.type
     )
   ) {
@@ -1861,6 +2010,32 @@ function expandPendingChoicesForOutcome(state, playerId, actions) {
         },
       ]);
     }).concat(skipOutcomes);
+  }
+
+  if (state.pendingChoice.type === "diable_discard") {
+    return state.pendingChoice.options.flatMap((option) => {
+      const nextState = clone(state);
+      const discardUtility = getOwnColumnDiscardUtility(
+        state,
+        state.pendingChoice.playerIndex,
+        option.columnIndex
+      );
+      performAction(nextState, playerId, {
+        type: "resolve_diable_discard",
+        targetPlayerIndex: option.targetPlayerIndex,
+        columnIndex: option.columnIndex,
+        discardUtility,
+      });
+      return expandPendingChoicesForOutcome(nextState, playerId, [
+        ...actions,
+        {
+          type: "resolve_diable_discard",
+          targetPlayerIndex: option.targetPlayerIndex,
+          columnIndex: option.columnIndex,
+          discardUtility,
+        },
+      ]);
+    });
   }
 
   if (state.pendingChoice.type === "faucheur_discard") {
@@ -2039,6 +2214,11 @@ function evaluateImmediateOpponentResponse(game, botIndex) {
 }
 
 function scoreOutcomeForBot(outcome, botIndex, difficulty) {
+  const strategicActionBonus = outcome.actions.reduce(
+    (total, action) => total + (action.discardUtility || 0),
+    0
+  );
+
   if (difficulty <= 0) {
     const immediateScore = evaluateGameForBot(outcome.resultingState, botIndex);
     const opponentResponseScore = evaluateImmediateOpponentResponse(
@@ -2046,10 +2226,10 @@ function scoreOutcomeForBot(outcome, botIndex, difficulty) {
       botIndex
     );
 
-    return immediateScore * 0.65 + opponentResponseScore * 0.35;
+    return immediateScore * 0.65 + opponentResponseScore * 0.35 + strategicActionBonus;
   }
 
-  return searchBestScore(outcome.resultingState, difficulty - 1, botIndex);
+  return searchBestScore(outcome.resultingState, difficulty - 1, botIndex) + strategicActionBonus;
 }
 
 function chooseBestOutcomeFromList(outcomes, botIndex, difficulty) {
@@ -2146,6 +2326,29 @@ function chooseBotPendingChoice(game, botIndex) {
         },
       ],
       score: target.moonCount * 10 + target.columnSize,
+    };
+  }
+
+  if (pendingChoice.type === "diable_discard") {
+    const scoreOption = (option) => {
+      return getOwnColumnDiscardUtility(game, botIndex, option.columnIndex);
+    };
+
+    const target = [...pendingChoice.options].sort(
+      (a, b) => scoreOption(b) - scoreOption(a)
+    )[0];
+    const discardUtility = scoreOption(target);
+
+    return {
+      actions: [
+        {
+          type: "resolve_diable_discard",
+          targetPlayerIndex: target.targetPlayerIndex,
+          columnIndex: target.columnIndex,
+          discardUtility,
+        },
+      ],
+      score: discardUtility,
     };
   }
 
@@ -2544,6 +2747,24 @@ function performAction(game, playerId, action) {
       ...(pendingPlay || {}),
       resolvedBoardCase: sourceCase,
     };
+    finalizeTurnAfterResolvedPlay(
+      game,
+      playerIndex,
+      pendingPlay?.wasLeftmostCard,
+      pendingPlay?.previousPosition,
+      pendingPlay?.shouldRefillRow
+    );
+    game.pendingPlay = null;
+    return;
+  }
+
+  if (action.type === "resolve_diable_discard") {
+    if (!game.pendingChoice || game.pendingChoice.playerIndex !== playerIndex) {
+      throw new Error("Aucun choix Diable en attente.");
+    }
+
+    const pendingPlay = game.pendingPlay;
+    resolveDiableDiscardChoice(game, action);
     finalizeTurnAfterResolvedPlay(
       game,
       playerIndex,
