@@ -1,13 +1,18 @@
 export function getTopValue(column) {
   if (column.length === 0) return 0;
-  return Math.max(...column.map((card) => card.value));
+
+  for (let index = column.length - 1; index >= 0; index -= 1) {
+    const card = column[index];
+
+    if (card.faceUp !== false) {
+      return card.value;
+    }
+  }
+
+  return 0;
 }
 
 export function canPlaceCardInColumn(card, column) {
-  if (card.type === "slime") {
-    return true;
-  }
-
   return card.value >= getTopValue(column);
 }
 
