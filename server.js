@@ -625,6 +625,7 @@ function getOwnColumnDiscardUtility(game, playerIndex, columnIndex) {
   const column = game.players[playerIndex].columns[columnIndex] || [];
   const topValue = getTopValue(column);
   const hiddenCount = column.filter((card) => card.faceUp === false).length;
+  const overflowCount = Math.max(0, column.length - 4);
   const chiefCount = column.filter(
     (card) => card.faceUp !== false && card.chief
   ).length;
@@ -639,12 +640,17 @@ function getOwnColumnDiscardUtility(game, playerIndex, columnIndex) {
   return Math.max(
     0,
     topValue * topValue * 120 +
+      overflowCount * 1_800 +
       Math.max(0, column.length - 2) * 45 +
       hiddenCount * 65 +
       moonCount * 20 -
       chiefCount * 170 -
       zombieCount * 130
   );
+}
+
+function hasOvergrownColumn(game, playerIndex) {
+  return game.players[playerIndex].columns.some((column) => column.length > 4);
 }
 
 function getOppositePlayerIndex(playerIndex) {
@@ -1298,16 +1304,17 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       recordCardActivation(game, "sorciere");
       const playerPosition = game.players[playerIndex].position;
       const handZoneIndex = getZoneIndexFromPosition(playerPosition);
+      const requestedMove = columnIndex === handZoneIndex ? 3 : 1;
+      const move = movePlayer(game, playerIndex, requestedMove, { ignoreStops: true });
+      recordCardMovement(game, "sorciere", move);
 
       if (columnIndex === handZoneIndex) {
-        const move = movePlayer(game, playerIndex, 3, { ignoreStops: true });
-        recordCardMovement(game, "sorciere", move);
         game.log.unshift(
           `${game.players[playerIndex].name} active Sorciere ${card.value} : jouee dans sa zone, ignore les stops -> +${move}/3`
         );
       } else {
         game.log.unshift(
-          `${game.players[playerIndex].name} active Sorciere ${card.value} : hors zone -> pas d'effet`
+          `${game.players[playerIndex].name} active Sorciere ${card.value} : hors zone, ignore les stops -> +${move}/1`
         );
       }
       return;
@@ -1429,13 +1436,13 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
     }
     case "blob": {
       recordCardActivation(game, "blob");
-      const move = movePlayer(game, playerIndex, 1);
+      const move = movePlayer(game, playerIndex, 2);
       recordCardMovement(game, "blob", move);
       const flipOptions = createFlipOptions(game);
 
       if (!flipOptions.length) {
         game.log.unshift(
-          `${game.players[playerIndex].name} active Blob ${card.value} : +${move}/1, aucune carte visible a retourner`
+          `${game.players[playerIndex].name} active Blob ${card.value} : +${move}/2, aucune carte visible a retourner`
         );
         return;
       }
@@ -1450,7 +1457,7 @@ function applyCardEffect(game, playerIndex, card, columnIndex) {
       };
       ensureStats(game).boardFlip.prompts += 1;
       game.log.unshift(
-        `${game.players[playerIndex].name} active Blob ${card.value} : +${move}/1 puis peut retourner une carte visible`
+        `${game.players[playerIndex].name} active Blob ${card.value} : +${move}/2 puis peut retourner une carte visible`
       );
       return;
     }
@@ -2463,6 +2470,19 @@ function chooseBotOutcome(game, botIndex, difficulty) {
   const visibleAdvancingOutcomes = visibleOutcomes.filter(
     (outcome) => getBotProgressScore(outcome.resultingState, botIndex) > currentProgress
   );
+  const strategicDiableOutcomes = visibleOutcomes.filter(
+    (outcome) =>
+      hasOvergrownColumn(game, botIndex) &&
+      outcome.actions.some(
+        (action) =>
+          action.type === "resolve_diable_discard" &&
+          (action.discardUtility || 0) > 0
+      )
+  );
+
+  if (strategicDiableOutcomes.length) {
+    return chooseBestOutcomeFromList(strategicDiableOutcomes, botIndex, difficulty);
+  }
 
   if (visibleAdvancingOutcomes.length) {
     return chooseBestOutcomeFromList(visibleAdvancingOutcomes, botIndex, difficulty);
