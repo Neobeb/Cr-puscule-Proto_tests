@@ -126,7 +126,7 @@ const CARD_SETS = {
     moonIndexes: [6],
     chiefIndexes: [9],
   }),
-  diable: createCardSet("diable", STANDARD_VALUES),
+  diable: createCardSet("diable", PREMIUM_VALUES),
   momie: createCardSet("momie", STANDARD_VALUES, {
     moonIndexes: [7],
     chiefIndexes: [9],
