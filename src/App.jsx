@@ -108,6 +108,7 @@ const CARD_RULES = [
   { name: "Reflet", effect: "Copie la valeur de la carte au meme niveau a gauche ou a droite. Si les deux existent, choisissez." },
   { name: "Banshee", effect: "Toutes les Banshee ont une lune. Avance de 1 par carte retournee de votre cote." },
   { name: "Blob", effect: "Avance de 1 puis vous pouvez retourner une carte visible, chez vous ou chez l'adversaire." },
+  { name: "Diable", effect: "Defaussez une colonne au choix chez vous." },
   { name: "Momie", effect: "Avance de 1, ou de 4 si elle est jouee sur une carte face cachee." },
   { name: "Idole", effect: "Avance de 1 par chef visible de votre cote." },
 ];
@@ -171,6 +172,33 @@ const BASE_FAMILY_OPTIONS = [
   },
 ];
 
+const OPTIONAL_FAMILY_OPTIONS = [
+  {
+    type: "banshee",
+    label: "Banshee",
+    effect: "Avance de 1 par carte retournee de votre cote.",
+  },
+  {
+    type: "idole",
+    label: "Idole",
+    effect: "Avance de 1 par chef visible de votre cote.",
+  },
+  {
+    type: "blob",
+    label: "Blob",
+    effect: "Avance de 1 puis peut retourner une carte visible.",
+  },
+  {
+    type: "diable",
+    label: "Diable",
+    effect: "Defausse une colonne au choix chez vous.",
+  },
+];
+
+const ALL_FAMILY_OPTIONS = [...BASE_FAMILY_OPTIONS, ...OPTIONAL_FAMILY_OPTIONS];
+const DEFAULT_FAMILY_TYPES = BASE_FAMILY_OPTIONS.map((family) => family.type);
+const ALL_FAMILY_TYPES = ALL_FAMILY_OPTIONS.map((family) => family.type);
+
 const BOOSTER_OPTIONS = [
   {
     id: "booster1",
@@ -189,6 +217,12 @@ const BOOSTER_OPTIONS = [
     label: "Booster 3",
     content: "Blob + 1 Zombie valeur 3",
     effect: "Blob avance de 1 puis peut retourner une carte visible.",
+  },
+  {
+    id: "booster4",
+    label: "Booster 4",
+    content: "Diable",
+    effect: "Diable defausse une colonne au choix chez vous.",
   },
 ];
 
@@ -216,6 +250,7 @@ export default function App() {
   const [game, setGame] = useState(null);
   const [createName, setCreateName] = useState("");
   const [createMode, setCreateMode] = useState("online");
+  const [selectedFamilyTypes, setSelectedFamilyTypes] = useState(DEFAULT_FAMILY_TYPES);
   const [selectedBoosterIds, setSelectedBoosterIds] = useState([]);
   const [selectedBoardType, setSelectedBoardType] = useState("base");
   const [joinName, setJoinName] = useState("");
@@ -297,6 +332,7 @@ export default function App() {
         body: JSON.stringify({
           playerName: createName,
           mode: createMode,
+          familyTypes: selectedFamilyTypes,
           boosterIds: selectedBoosterIds,
           boardType: selectedBoardType,
         }),
@@ -317,6 +353,14 @@ export default function App() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function toggleFamilyType(familyType) {
+    setSelectedFamilyTypes((current) =>
+      current.includes(familyType)
+        ? current.filter((entry) => entry !== familyType)
+        : [...current, familyType]
+    );
   }
 
   function toggleBooster(boosterId) {
@@ -580,21 +624,59 @@ export default function App() {
               </select>
               <div style={familySelectorStyle}>
                 <div style={{ fontWeight: 800, marginBottom: 8 }}>
-                  Jeu de base inclus
+                  Familles de la partie
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFamilyTypes(DEFAULT_FAMILY_TYPES)}
+                    style={secondaryChoiceButtonStyle}
+                  >
+                    Jeu de base
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFamilyTypes(ALL_FAMILY_TYPES)}
+                    style={secondaryChoiceButtonStyle}
+                  >
+                    Toutes les familles
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFamilyTypes([])}
+                    style={secondaryChoiceButtonStyle}
+                  >
+                    Vider
+                  </button>
                 </div>
                 <div style={familyGridStyle}>
-                  {BASE_FAMILY_OPTIONS.map((family) => (
-                    <div key={family.type} style={fixedFamilyOptionStyle}>
-                      <span style={familyLabelStyle}>{family.label}</span>
-                      <span style={familyEffectStyle}>{family.effect}</span>
-                    </div>
+                  {ALL_FAMILY_OPTIONS.map((family) => (
+                    <label key={family.type} style={familyOptionStyle}>
+                      <input
+                        type="checkbox"
+                        checked={selectedFamilyTypes.includes(family.type)}
+                        onChange={() => toggleFamilyType(family.type)}
+                      />
+                      <span>
+                        <span style={familyLabelStyle}>{family.label}</span>
+                        <span style={familyEffectStyle}>{family.effect}</span>
+                      </span>
+                    </label>
                   ))}
                 </div>
+                {!selectedFamilyTypes.length ? (
+                  <div style={{ marginTop: 8, color: "#991b1b", fontWeight: 700 }}>
+                    Selectionnez au moins une famille pour creer la partie.
+                  </div>
+                ) : null}
               </div>
 
               <div style={familySelectorStyle}>
                 <div style={{ fontWeight: 800, marginBottom: 8 }}>
                   Boosters optionnels
+                </div>
+                <div style={{ marginBottom: 10, color: "#475569", fontSize: 13 }}>
+                  Les boosters ajoutent leur famille si elle n'est pas cochee, plus leur eventuel Zombie bonus.
                 </div>
                 <div style={familyGridStyle}>
                   {BOOSTER_OPTIONS.map((booster) => (
@@ -638,7 +720,7 @@ export default function App() {
               </div>
               <button
                 onClick={createGame}
-                disabled={busy}
+                disabled={busy || !selectedFamilyTypes.length}
                 style={primaryButtonStyle}
               >
                 {createMode === "bot" ? "Creer une partie contre IA" : "Creer la partie"}
@@ -754,6 +836,8 @@ export default function App() {
                         : "Banshee : carte lune, avancez de 1 par carte retournee de votre cote."
                       : pendingChoice.type === "board_destroy"
                       ? `${pendingChoice.label || "Sabotage"} : choisissez une carte visible a detruire, ou passez.`
+                      : pendingChoice.type === "diable_discard"
+                      ? "Diable : choisissez une de vos colonnes a defausser."
                       : pendingChoice.type === "faucheur_discard"
                       ? "Faucheur : choisissez une carte visible du dessus a defausser."
                       : `Case ${pendingChoice.sourceCase} : choisissez une carte a retourner, ou passez.`
@@ -837,6 +921,35 @@ export default function App() {
                       Ne rien defausser
                     </button>
                   ) : null}
+                </div>
+              ) : null}
+
+              {pendingChoice?.type === "diable_discard" ? (
+                <div style={choicePanelStyle}>
+                  <div style={{ fontWeight: 800, marginBottom: 10 }}>
+                    Diable : defausser une de vos colonnes
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {pendingChoice.options.map((option) => (
+                      <button
+                        key={`${option.targetPlayerIndex}-${option.columnIndex}`}
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          sendAction({
+                            type: "resolve_diable_discard",
+                            targetPlayerIndex: option.targetPlayerIndex,
+                            columnIndex: option.columnIndex,
+                          });
+                        }}
+                        style={choiceButtonStyle}
+                      >
+                        {option.targetPlayerName} col {option.columnIndex + 1} :{" "}
+                        {option.columnSize} carte(s), {option.moonCount} lune(s)
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ) : null}
 
