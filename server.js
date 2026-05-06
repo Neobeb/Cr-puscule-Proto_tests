@@ -490,10 +490,6 @@ function getTopValue(column) {
 }
 
 function canPlaceCardInColumn(card, column) {
-  if (card.type === "blob") {
-    return true;
-  }
-
   return card.value >= getTopValue(column);
 }
 
