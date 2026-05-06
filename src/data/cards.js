@@ -1,5 +1,5 @@
 const STANDARD_VALUES = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4];
-const PREMIUM_VALUES = [3, 3, 3, 3, 4, 4, 4, 4, 3, 4];
+const PREMIUM_VALUES = [3, 3, 3, 3, 3, 4, 4, 4, 4, 4];
 
 function createCardSet(type, values, options = {}) {
   const moonIndexes = new Set(options.moonIndexes || []);
@@ -21,7 +21,7 @@ export const cards = [
     chiefIndexes: [9],
   }),
   ...createCardSet("vampire", PREMIUM_VALUES, {
-    moonIndexes: [4],
+    moonIndexes: [5],
   }),
   ...createCardSet("squelette", STANDARD_VALUES, {
     moonIndexes: [9],
@@ -32,22 +32,25 @@ export const cards = [
     chiefIndexes: [2],
   }),
   ...createCardSet("zombie", STANDARD_VALUES, {
-    chiefIndexes: [0, 1, 2, 3, 4, 5, 6],
+    chiefIndexes: [0, 2, 4, 6, 8],
   }),
   ...createCardSet("reflet", PREMIUM_VALUES, {
-    moonIndexes: [4],
-    chiefIndexes: [6],
+    moonIndexes: [5],
+    chiefIndexes: [7],
   }),
   ...createCardSet("banshee", STANDARD_VALUES, {
-    moonIndexes: STANDARD_VALUES.map((_, index) => index),
+    chiefIndexes: [6],
   }),
   ...createCardSet("blob", STANDARD_VALUES, {
     moonIndexes: [6],
+    chiefIndexes: [9],
   }),
+  ...createCardSet("diable", PREMIUM_VALUES),
   ...createCardSet("momie", STANDARD_VALUES, {
     moonIndexes: [7],
+    chiefIndexes: [9],
   }),
   ...createCardSet("idole", PREMIUM_VALUES, {
-    allChiefs: true,
+    chiefIndexes: [1, 3, 5, 7, 9],
   }),
 ];
