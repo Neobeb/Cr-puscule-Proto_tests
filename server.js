@@ -20,7 +20,8 @@ const TYPE_LABELS = {
   statue: "Statue",
 };
 
-const FAMILY_VALUES = [0, 1, 1, 2, 2, 3, 3, 4];
+const STANDARD_VALUES = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4];
+const PREMIUM_VALUES = [3, 3, 3, 3, 3, 4, 4, 4, 4, 4];
 const STAR_CASE = 16;
 const BASE_FAMILY_TYPES = [
   "vampire",
@@ -92,39 +93,41 @@ function createCardSet(type, values, options = {}) {
 }
 
 const CARD_SETS = {
-  sorciere: createCardSet("sorciere", FAMILY_VALUES, {
+  sorciere: createCardSet("sorciere", STANDARD_VALUES, {
     moonIndexes: [2],
     chiefIndexes: [9],
   }),
-  vampire: createCardSet("vampire", FAMILY_VALUES, {
-    moonIndexes: [4],
+  vampire: createCardSet("vampire", PREMIUM_VALUES, {
+    moonIndexes: [5],
   }),
-  squelette: createCardSet("squelette", FAMILY_VALUES, {
+  squelette: createCardSet("squelette", STANDARD_VALUES, {
     moonIndexes: [9],
     chiefIndexes: [0],
   }),
-  loup: createCardSet("loup", FAMILY_VALUES, {
+  loup: createCardSet("loup", STANDARD_VALUES, {
     moonIndexes: [8],
     chiefIndexes: [2],
   }),
-  zombie: createCardSet("zombie", FAMILY_VALUES, {
-    chiefIndexes: [0, 1, 2, 3, 4, 5, 6],
+  zombie: createCardSet("zombie", STANDARD_VALUES, {
+    chiefIndexes: [0, 2, 4, 6, 8],
   }),
-  reflet: createCardSet("reflet", FAMILY_VALUES, {
-    moonIndexes: [4],
+  reflet: createCardSet("reflet", PREMIUM_VALUES, {
+    moonIndexes: [5],
+    chiefIndexes: [7],
+  }),
+  banshee: createCardSet("banshee", STANDARD_VALUES, {
     chiefIndexes: [6],
   }),
-  banshee: createCardSet("banshee", FAMILY_VALUES, {
-    moonIndexes: FAMILY_VALUES.map((_, index) => index),
-  }),
-  blob: createCardSet("blob", FAMILY_VALUES, {
+  blob: createCardSet("blob", STANDARD_VALUES, {
     moonIndexes: [6],
+    chiefIndexes: [9],
   }),
-  momie: createCardSet("momie", FAMILY_VALUES, {
+  momie: createCardSet("momie", STANDARD_VALUES, {
     moonIndexes: [7],
+    chiefIndexes: [9],
   }),
-  idole: createCardSet("idole", FAMILY_VALUES, {
-    allChiefs: true,
+  idole: createCardSet("idole", PREMIUM_VALUES, {
+    chiefIndexes: [1, 3, 5, 7, 9],
   }),
 };
 
@@ -2424,6 +2427,11 @@ function finalizeTurnAfterResolvedPlay(
 
 function ensureRowAvailable(game) {
   if (resolveDeckExhaustedEndgame(game)) {
+    return;
+  }
+
+  if (shouldRefillFromFirstSlotRule(game.row)) {
+    refillCommonRow(game, "Refill");
     return;
   }
 
