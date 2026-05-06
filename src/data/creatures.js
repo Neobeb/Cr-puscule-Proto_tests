@@ -49,6 +49,11 @@ export const CREATURES = {
     color: "#bbf7d0",
     icon: "🫧",
   },
+  diable: {
+    label: "Diable",
+    color: "#fecaca",
+    icon: "😈",
+  },
   momie: {
     label: "Momie",
     color: "#fef3c7",
