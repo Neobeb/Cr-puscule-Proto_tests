@@ -109,7 +109,7 @@ const CARD_RULES = [
   { name: "Zombie", effect: "Avance selon votre nombre total de zombies. Tous les zombies sont des chefs. +1/+2/+4/+6/⭐" },
   { name: "Reflet", effect: "Copie la valeur de la carte au meme niveau a gauche ou a droite. Si les deux existent, choisissez." },
   { name: "Banshee", effect: "Toutes les Banshee ont une lune. Avance de 1 par carte retournee de votre cote." },
-  { name: "Blob", effect: "Avance de 2 puis vous pouvez retourner une carte visible, chez vous ou chez l'adversaire." },
+  { name: "Blob", effect: "Avance de 2 puis vous pouvez retourner la derniere carte visible d'une colonne, chez vous ou chez l'adversaire." },
   { name: "Diable", effect: "Defaussez une colonne au choix chez vous." },
   { name: "Momie", effect: "Avance de 1, ou de 4 si elle est jouee sur une carte face cachee." },
   { name: "Idole", effect: "Avance de 1 par chef visible de votre cote." },
@@ -188,7 +188,7 @@ const OPTIONAL_FAMILY_OPTIONS = [
   {
     type: "blob",
     label: "Blob",
-    effect: "Avance de 2 puis peut retourner une carte visible chez vous ou chez l'adversaire.",
+    effect: "Avance de 2 puis peut retourner la derniere carte visible d'une colonne, chez vous ou chez l'adversaire.",
   },
   {
     type: "diable",
