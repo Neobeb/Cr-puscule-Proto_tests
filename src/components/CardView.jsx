@@ -24,7 +24,7 @@ const EFFECT_TEXTS = {
   zombie: "+1/+2/+4/+6/⭐",
   reflet: "Copiez la valeur a gauche ou a droite au meme niveau.",
   banshee: "Carte lune. Avancez de 1 par carte retournee de votre cote.",
-  blob: "Avancez de 2, puis vous pouvez retourner une carte visible chez vous ou chez l'adversaire.",
+  blob: "Avancez de 2, puis vous pouvez retourner la derniere carte visible d'une colonne.",
   diable: "Defaussez une colonne au choix chez vous.",
   momie: "Avancez de 1, ou de 4 sur une carte cachee.",
   idole: "Avancez de 1 par chef visible de votre cote.",
