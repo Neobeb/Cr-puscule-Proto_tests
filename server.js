@@ -33,27 +33,10 @@ const BASE_FAMILY_TYPES = [
   "zombie",
   "momie",
 ];
-const BOOSTER_DEFINITIONS = {
-  booster1: {
-    familyTypes: ["banshee"],
-    extraZombieValue: 1,
-  },
-  booster2: {
-    familyTypes: ["idole"],
-    extraZombieValue: 2,
-  },
-  booster3: {
-    familyTypes: ["blob"],
-    extraZombieValue: 3,
-  },
-  booster4: {
-    familyTypes: ["diable"],
-  },
-};
-const DEFAULT_BOOSTER_IDS = [];
+const OPTIONAL_FAMILY_TYPES = ["banshee", "idole", "blob", "diable"];
 const ALL_FAMILY_TYPES = [
   ...BASE_FAMILY_TYPES,
-  ...Object.values(BOOSTER_DEFINITIONS).flatMap((booster) => booster.familyTypes),
+  ...OPTIONAL_FAMILY_TYPES,
 ];
 const BOARD_TYPES = {
   blank: {
@@ -96,45 +79,70 @@ function createCardSet(type, values, options = {}) {
   }));
 }
 
-const CARD_SETS = {
-  sorciere: createCardSet("sorciere", STANDARD_VALUES, {
+const DEFAULT_FAMILY_CONFIGS = {
+  sorciere: {
+    values: STANDARD_VALUES,
     moonIndexes: [2],
     chiefIndexes: [9],
-  }),
-  vampire: createCardSet("vampire", PREMIUM_VALUES, {
+  },
+  vampire: {
+    values: PREMIUM_VALUES,
     moonIndexes: [5],
-  }),
-  squelette: createCardSet("squelette", STANDARD_VALUES, {
+    chiefIndexes: [],
+  },
+  squelette: {
+    values: STANDARD_VALUES,
     moonIndexes: [9],
     chiefIndexes: [0],
-  }),
-  loup: createCardSet("loup", STANDARD_VALUES, {
+  },
+  loup: {
+    values: STANDARD_VALUES,
     moonIndexes: [8],
     chiefIndexes: [2],
-  }),
-  zombie: createCardSet("zombie", STANDARD_VALUES, {
+  },
+  zombie: {
+    values: STANDARD_VALUES,
+    moonIndexes: [],
     chiefIndexes: [0, 2, 4, 6, 8],
-  }),
-  reflet: createCardSet("reflet", PREMIUM_VALUES, {
+  },
+  reflet: {
+    values: PREMIUM_VALUES,
     moonIndexes: [5],
     chiefIndexes: [7],
-  }),
-  banshee: createCardSet("banshee", STANDARD_VALUES, {
+  },
+  banshee: {
+    values: STANDARD_VALUES,
+    moonIndexes: [],
     chiefIndexes: [6],
-  }),
-  blob: createCardSet("blob", STANDARD_VALUES, {
+  },
+  blob: {
+    values: STANDARD_VALUES,
     moonIndexes: [6],
     chiefIndexes: [9],
-  }),
-  diable: createCardSet("diable", PREMIUM_VALUES),
-  momie: createCardSet("momie", STANDARD_VALUES, {
+  },
+  diable: {
+    values: PREMIUM_VALUES,
+    moonIndexes: [],
+    chiefIndexes: [],
+  },
+  momie: {
+    values: STANDARD_VALUES,
     moonIndexes: [7],
     chiefIndexes: [9],
-  }),
-  idole: createCardSet("idole", PREMIUM_VALUES, {
+  },
+  idole: {
+    values: PREMIUM_VALUES,
+    moonIndexes: [],
     chiefIndexes: [1, 3, 5, 7, 9],
-  }),
+  },
 };
+
+const CARD_SETS = Object.fromEntries(
+  Object.entries(DEFAULT_FAMILY_CONFIGS).map(([type, config]) => [
+    type,
+    createCardSet(type, config.values, config),
+  ])
+);
 
 function normalizeFamilyTypes(familyTypes) {
   const requested = Array.isArray(familyTypes) ? familyTypes : BASE_FAMILY_TYPES;
@@ -145,15 +153,85 @@ function normalizeFamilyTypes(familyTypes) {
   return valid.length ? valid : BASE_FAMILY_TYPES;
 }
 
-function normalizeBoosterIds(boosterIds) {
-  const requested = Array.isArray(boosterIds) ? boosterIds : DEFAULT_BOOSTER_IDS;
-  return requested.filter(
-    (id, index) => BOOSTER_DEFINITIONS[id] && requested.indexOf(id) === index
+function normalizeBoardType(boardType) {
+  return BOARD_TYPES[boardType] ? boardType : DEFAULT_BOARD_TYPE;
+}
+
+function normalizeCardValues(values, fallbackValues) {
+  const fallback = Array.isArray(fallbackValues) && fallbackValues.length
+    ? fallbackValues
+    : STANDARD_VALUES;
+  const source = Array.isArray(values) ? values : [];
+
+  return fallback.map((fallbackValue, index) => {
+    const value = Number(source[index]);
+
+    if (!Number.isFinite(value)) {
+      return fallbackValue;
+    }
+
+    return Math.max(0, Math.min(9, Math.trunc(value)));
+  });
+}
+
+function normalizeCardIndexes(indexes, fallbackIndexes, cardCount) {
+  const source = Array.isArray(indexes) ? indexes : fallbackIndexes;
+
+  if (!Array.isArray(source)) {
+    return [];
+  }
+
+  const normalized = source
+    .map((index) => Number(index))
+    .filter((index) => Number.isInteger(index) && index >= 0 && index < cardCount);
+
+  return [...new Set(normalized)];
+}
+
+function normalizeFamilyConfig(type, familyConfig) {
+  const fallback = DEFAULT_FAMILY_CONFIGS[type];
+
+  if (!fallback) {
+    return null;
+  }
+
+  const incoming =
+    familyConfig && typeof familyConfig === "object" ? familyConfig : {};
+  const values = normalizeCardValues(incoming.values, fallback.values);
+  const moonIndexes = normalizeCardIndexes(
+    incoming.moonIndexes,
+    fallback.moonIndexes,
+    values.length
+  );
+  const chiefIndexes = normalizeCardIndexes(
+    incoming.chiefIndexes,
+    fallback.chiefIndexes,
+    values.length
+  );
+
+  return {
+    values,
+    moonIndexes,
+    chiefIndexes,
+  };
+}
+
+function normalizeFamilyConfigs(familyConfigs) {
+  const incoming =
+    familyConfigs && typeof familyConfigs === "object" ? familyConfigs : {};
+
+  return Object.fromEntries(
+    ALL_FAMILY_TYPES.map((type) => [
+      type,
+      normalizeFamilyConfig(type, incoming[type]),
+    ])
   );
 }
 
-function normalizeBoardType(boardType) {
-  return BOARD_TYPES[boardType] ? boardType : DEFAULT_BOARD_TYPE;
+function createConfiguredCardSet(type, familyConfigs) {
+  const config = familyConfigs?.[type] || normalizeFamilyConfig(type);
+
+  return createCardSet(type, config.values, config);
 }
 
 function getBoardConfig(gameOrBoardType) {
@@ -383,33 +461,16 @@ function recordCardDiscard(game, source, cardCount = 1) {
   stats.discards.bySource[source] = sourceStats;
 }
 
-function createExtraZombieCard(value, boosterId) {
-  return {
-    id: `zombie-${boosterId}`,
-    type: "zombie",
-    value,
-    moon: false,
-    chief: true,
-  };
-}
-
-function createDeck(familyTypes = BASE_FAMILY_TYPES, boosterIds = DEFAULT_BOOSTER_IDS) {
+function createDeck(
+  familyTypes = BASE_FAMILY_TYPES,
+  familyConfigs = null
+) {
   const selectedFamilies = normalizeFamilyTypes(familyTypes);
-  const selectedBoosters = normalizeBoosterIds(boosterIds);
-  const boosterFamilies = selectedBoosters.flatMap(
-    (boosterId) => BOOSTER_DEFINITIONS[boosterId].familyTypes
+  const normalizedFamilyConfigs = normalizeFamilyConfigs(familyConfigs);
+  const families = [...new Set(selectedFamilies)];
+  const deck = clone(
+    families.flatMap((type) => createConfiguredCardSet(type, normalizedFamilyConfigs) || [])
   );
-  const families = [...new Set([...selectedFamilies, ...boosterFamilies])];
-  const deck = clone(families.flatMap((type) => CARD_SETS[type] || []));
-
-  selectedBoosters.forEach((boosterId) => {
-    deck.push(
-      createExtraZombieCard(
-        BOOSTER_DEFINITIONS[boosterId].extraZombieValue,
-        boosterId
-      )
-    );
-  });
 
   for (let i = deck.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -1571,9 +1632,9 @@ function createStartingColumns() {
 
 function createInitialState(hostName, options = {}) {
   const familyTypes = normalizeFamilyTypes(options.familyTypes || BASE_FAMILY_TYPES);
-  const boosterIds = normalizeBoosterIds(options.boosterIds);
+  const familyConfigs = normalizeFamilyConfigs(options.familyConfigs);
   const boardType = normalizeBoardType(options.boardType);
-  const deck = createDeck(familyTypes, boosterIds);
+  const deck = createDeck(familyTypes, familyConfigs);
   const { drawn, remaining } = drawCards(deck, 4);
   const playerOne = createPlayer(normalizeName(hostName, "Joueur 1"));
 
@@ -1600,7 +1661,7 @@ function createInitialState(hostName, options = {}) {
     pendingChoice: null,
     pendingPlay: null,
     familyTypes,
-    boosterIds,
+    familyConfigs,
     boardType,
     deck: remaining,
     row: fillRowSlots([null, null, null, null], drawn),
@@ -1620,9 +1681,9 @@ function createInitialState(hostName, options = {}) {
 
 function resetGameState(existingGame) {
   const familyTypes = normalizeFamilyTypes(existingGame.familyTypes);
-  const boosterIds = normalizeBoosterIds(existingGame.boosterIds);
+  const familyConfigs = normalizeFamilyConfigs(existingGame.familyConfigs);
   const boardType = normalizeBoardType(existingGame.boardType);
-  const deck = createDeck(familyTypes, boosterIds);
+  const deck = createDeck(familyTypes, familyConfigs);
   const { drawn, remaining } = drawCards(deck, 4);
 
   existingGame.phase = "playing";
@@ -1634,7 +1695,7 @@ function resetGameState(existingGame) {
   existingGame.pendingChoice = null;
   existingGame.pendingPlay = null;
   existingGame.familyTypes = familyTypes;
-  existingGame.boosterIds = boosterIds;
+  existingGame.familyConfigs = familyConfigs;
   existingGame.boardType = boardType;
   existingGame.deck = remaining;
   existingGame.row = fillRowSlots([null, null, null, null], drawn);
@@ -1657,7 +1718,7 @@ function createBotVsBotState(difficultyA = 0, difficultyB = 0, options = {}) {
     mode: "bot",
     botDifficulty: difficultyB,
     familyTypes: options.familyTypes,
-    boosterIds: options.boosterIds,
+    familyConfigs: options.familyConfigs,
     boardType: options.boardType,
   });
 
@@ -1823,7 +1884,7 @@ function sanitizeGame(game, playerId) {
     currentPlayer: game.currentPlayer,
     currentPlayerName: currentPlayer.name,
     familyTypes: normalizeFamilyTypes(game.familyTypes),
-    boosterIds: normalizeBoosterIds(game.boosterIds),
+    familyConfigs: normalizeFamilyConfigs(game.familyConfigs),
     boardType: normalizeBoardType(game.boardType),
     selectedCardIndex: game.selectedCardIndex,
     pendingChoice,
@@ -3073,7 +3134,7 @@ function handleApi(req, res, url) {
           mode: body.mode,
           botDifficulty: body.botDifficulty,
           familyTypes: body.familyTypes,
-          boosterIds: body.boosterIds,
+          familyConfigs: body.familyConfigs,
           boardType: body.boardType,
         });
         games.set(state.id, { state, clients: new Set() });
